@@ -27,9 +27,9 @@ fi
 CODENAME="${UBUNTU_CODENAME:-$VERSION_CODENAME}"
 
 case "$CODENAME" in
-    noble)  SUFFIX="" ;;            # 24.04: opentenbase_5.0-1ubuntu1_amd64.deb
-    jammy)  SUFFIX="~jammy" ;;      # 22.04: opentenbase_5.0-1ubuntu1~jammy_amd64.deb
-    focal)  SUFFIX="~focal" ;;      # 20.04: opentenbase_5.0-1ubuntu1~focal_amd64.deb
+    noble)  SUFFIX=".noble" ;;      # 24.04: opentenbase_5.0-1ubuntu1.noble_amd64.deb
+    jammy)  SUFFIX=".jammy" ;;      # 22.04: opentenbase_5.0-1ubuntu1.jammy_amd64.deb
+    focal)  SUFFIX=".focal" ;;      # 20.04: opentenbase_5.0-1ubuntu1.focal_amd64.deb
     *)
         echo "ERROR: unsupported Ubuntu version: $CODENAME" >&2
         echo "Supported: focal (20.04), jammy (22.04), noble (24.04)" >&2
