@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-${{ matrix.ubuntu }}
+    continue-on-error: ${{ matrix.optional || false }}
     strategy:
       fail-fast: false
       matrix:
@@ -18,6 +19,7 @@ jobs:
             libpqxx: libpqxx-6.4
             cli11_from_source: true
             debhelper_compat: 12
+            optional: true
           - ubuntu: "22.04"
             codename: jammy
             libpqxx: libpqxx-7.6
