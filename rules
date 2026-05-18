@@ -28,6 +28,7 @@ override_dh_auto_configure:
 	    --with-libxml \
 	    --with-readline \
 	    --with-uuid=ossp \
+	    --enable-license=no \
 	    --enable-thread-safety \
 	    XML2_CONFIG=/usr/bin/xml2-config \
 	    CFLAGS="-O2 -g -fPIC $(WARN_FLAGS) -I/usr/include/libxml2" \
