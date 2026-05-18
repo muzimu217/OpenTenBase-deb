@@ -162,15 +162,56 @@ register_nodes() {
     echo "  reloading connection pool ..."
     run_as_otb bash -c "$psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
 
-    # Propagate node registrations to datanode (if datanode is running)
+    # Propagate node registrations to datanode directly (if datanode is running)
     if [ -f "$DN1_PGDATA/postmaster.pid" ] && \
        kill -0 "$(head -1 "$DN1_PGDATA/postmaster.pid")" 2>/dev/null; then
         echo "  propagating nodes to datanode ..."
-        run_as_otb bash -c "$psql -c \"EXECUTE DIRECT ON ($DN1_NODENAME) 'CREATE GTM NODE gtm_master WITH (HOST='\\\'\\\'127.0.0.1\\\'\\\', PORT=$GTM_PORT, PRIMARY)';\"" 2>/dev/null || true
-        run_as_otb bash -c "$psql -c \"EXECUTE DIRECT ON ($DN1_NODENAME) 'ALTER GTM NODE gtm_master WITH (HOST='\\\'\\\'127.0.0.1\\\'\\\', PORT=$GTM_PORT, PRIMARY)';\"" 2>/dev/null || true
-        run_as_otb bash -c "$psql -c \"EXECUTE DIRECT ON ($DN1_NODENAME) 'CREATE NODE $COORD_NODENAME WITH (TYPE='\\\'\\\'coordinator\\\'\\\'', HOST='\\\'\\\'127.0.0.1\\\'\\\'', PORT=$COORD_PORT, FORWARD=$coord_fwd)';\"" 2>/dev/null || true
-        run_as_otb bash -c "$psql -c \"EXECUTE DIRECT ON ($DN1_NODENAME) 'SELECT pgxc_pool_reload()';\"" 2>/dev/null || true
+        # Register GTM on datanode
+        run_as_otb bash -c "$dn1_psql -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=$GTM_PORT, PRIMARY);\"" 2>/dev/null || true
+        run_as_otb bash -c "$dn1_psql -c \"ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=$GTM_PORT, PRIMARY);\"" 2>/dev/null || true
+        # Register coordinator on datanode (needed for pooler GUC validation)
+        run_as_otb bash -c "$dn1_psql -c \"CREATE NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT, FORWARD=$coord_fwd);\"" 2>/dev/null || true
+        run_as_otb bash -c "$dn1_psql -c \"ALTER NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT, FORWARD=$coord_fwd);\"" 2>/dev/null || true
+        run_as_otb bash -c "$dn1_psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
     fi
+}
+
+setup_node_group() {
+    # Create default node group and sharding map if not already done
+    local psql="$OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -X -q -v ON_ERROR_STOP=0"
+    local dn1_psql="$OTB_BIN/psql -h 127.0.0.1 -p $DN1_PORT -U $OTB_USER -d postgres -X -q -v ON_ERROR_STOP=0"
+
+    # Check if node group already exists on coordinator
+    local has_group
+    has_group=$(run_as_otb bash -c "$psql -t -A -c \"SELECT count(*) FROM pgxc_group WHERE group_name = 'default_group';\"" 2>/dev/null || echo "0")
+    if [ "$has_group" = "1" ]; then
+        return 0
+    fi
+
+    echo "  setting up default node group ..."
+
+    # Get datanode OID from coordinator
+    local dn_oid
+    dn_oid=$(run_as_otb bash -c "$psql -t -A -c \"SELECT oid FROM pgxc_node WHERE node_name = '$DN1_NODENAME' AND node_type = 'D';\"" 2>/dev/null)
+    if [ -z "$dn_oid" ]; then
+        echo "  WARNING: could not find datanode OID, skipping node group setup"
+        return 0
+    fi
+
+    # Create node group on datanode first
+    run_as_otb bash -c "$dn1_psql -c \"CREATE DEFAULT NODE GROUP default_group WITH ($DN1_NODENAME);\"" 2>/dev/null || true
+
+    # Insert node group into coordinator's catalog
+    run_as_otb bash -c "$psql -c \"INSERT INTO pgxc_group (group_name, default_group, group_members) VALUES ('default_group', 1, '$dn_oid');\"" 2>/dev/null || true
+
+    # Reload pool so coordinator sees the group
+    run_as_otb bash -c "$psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
+
+    # Create sharding group
+    echo "  creating sharding map ..."
+    run_as_otb bash -c "$psql -c \"CREATE SHARDING GROUP TO GROUP default_group;\"" 2>/dev/null || true
+
+    echo "  node group setup complete"
 }
 
 stop_gtm() {
@@ -200,8 +241,10 @@ cmd_start() {
                 ;;
         esac
     done
-    # Final registration pass (ensures datanode also gets GTM propagated)
+    # Final registration pass (ensures datanode also gets nodes propagated)
     register_nodes
+    # Set up node group and sharding map for DISTRIBUTE BY SHARD support
+    setup_node_group
     echo ">> start complete"
 }
 
@@ -232,8 +275,8 @@ cmd_status() {
             coord)
                 if [ -f "$COORD_PGDATA/postmaster.pid" ] && \
                    kill -0 "$(head -1 "$COORD_PGDATA/postmaster.pid")" 2>/dev/null; then
-                    echo "coord: RUNNING"
-                else echo "coord: STOPPED"; ok=0; fi ;;
+                    echo "coord:   RUNNING"
+                else echo "coord:   STOPPED"; ok=0; fi ;;
         esac
     done
     [ $ok -eq 1 ] && return 0 || return 3
