@@ -33,9 +33,19 @@ jobs:
         with:
           path: packaging
 
-      - name: Merge debian/ into source
+      - name: Merge packaging into source
         run: |
-          cp -r packaging/debian source/
+          # Packaging repo has debian files at root, move into source/debian/
+          mkdir -p source/debian
+          # Copy all packaging files except .github, README, VERIFICATION
+          for f in packaging/*; do
+            name=$(basename "$f")
+            case "$name" in
+              .github|README.md|VERIFICATION.md) continue ;;
+            esac
+            cp -a "$f" source/debian/
+          done
+          # Copy install.sh to output later
           cp packaging/install.sh source/ 2>/dev/null || true
 
       - name: Install build dependencies
@@ -84,12 +94,13 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
           path: all-debs
-
-      - name: Upload install.sh
-        uses: actions/checkout@v4
 
       - name: Create release
         uses: softprops/action-gh-release@v2
