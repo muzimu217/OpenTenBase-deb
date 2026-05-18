@@ -75,21 +75,25 @@ opentenbase-ctl init
 opentenbase-ctl start
 ```
 
-**结果：** 三节点全部启动成功
+**结果：** 三节点全部启动成功，自动配置 node group 和 sharding map
 
 ```
-starting gtm
-starting coord
-registering GTM node in pgxc_node ...
-registering coordinator node ...
-registering datanode node ...
-reloading connection pool ...
-starting dn1
-registering GTM node in pgxc_node ...
-registering coordinator node ...
-registering datanode node ...
-reloading connection pool ...
-propagating nodes to datanode ...
+  starting gtm
+server starting
+  starting coord
+  registering GTM node in pgxc_node ...
+  registering coordinator node ...
+  registering datanode node ...
+  reloading connection pool ...
+  starting dn1
+  registering GTM node in pgxc_node ...
+  registering coordinator node ...
+  registering datanode node ...
+  reloading connection pool ...
+  propagating nodes to datanode ...
+  setting up default node group ...
+  creating sharding map ...
+  node group setup complete
 >> start complete
 ```
 
@@ -116,16 +120,52 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres
 **结果：** 连接成功，查询正常
 
 ```
-PostgreSQL 10.0 @ OpenTenBase_v5.0 OpenTenBase V5.21 2026-05-17 15:25:22
+PostgreSQL 10.0 @ OpenTenBase_v5.0 OpenTenBase V5.21 2026-05-18 16:41:36
 
  node_name  | node_type | node_port | node_host
 ------------+-----------+-----------+-----------
  gtm_master | G         |      6666 | 127.0.0.1
  coord1     | C         |      5432 | 127.0.0.1
  dn001      | D         |     15432 | 127.0.0.1
-
- count: 492 (pg_class)
 ```
+
+### 步骤 7：验证 CRUD 操作
+
+```sql
+-- 创建表（使用 SHARD 分布）
+CREATE TABLE t1(id int, name text) DISTRIBUTE BY SHARD(id);
+
+-- 插入数据
+INSERT INTO t1 VALUES (1, 'alice'), (2, 'bob'), (3, 'charlie');
+
+-- 查询
+SELECT * FROM t1 ORDER BY id;
+ id |  name
+----+---------
+  1 | alice
+  2 | bob
+  3 | charlie
+(3 rows)
+
+-- 更新
+UPDATE t1 SET name = 'alex' WHERE id = 1;
+
+-- 删除
+DELETE FROM t1 WHERE id = 3;
+
+-- 验证
+SELECT * FROM t1 ORDER BY id;
+ id | name
+----+------
+  1 | alex
+  2 | bob
+(2 rows)
+
+-- 清理
+DROP TABLE t1;
+```
+
+**结果：** 全部 CRUD 操作通过
 
 ---
 
@@ -141,16 +181,23 @@ PostgreSQL 10.0 @ OpenTenBase_v5.0 OpenTenBase V5.21 2026-05-17 15:25:22
 | GTM 注册 | 通过 |
 | Coordinator 连接 | 通过 |
 | Datanode 查询 | 通过 |
+| Node Group 自动配置 | 通过 |
+| Sharding Map 自动创建 | 通过 |
+| CREATE TABLE (DISTRIBUTE BY SHARD) | 通过 |
+| INSERT | 通过 |
+| SELECT | 通过 |
+| UPDATE | 通过 |
+| DELETE | 通过 |
+| DROP TABLE | 通过 |
 
-**结论：** OpenTenBase v5.0 .deb 安装包在 Ubuntu 24.04 上可正常安装和运行，已验证通过。
+**结论：** OpenTenBase v5.0 .deb 安装包在 Ubuntu 24.04 上可正常安装和运行，支持完整的 CRUD 操作，已验证通过。
 
 ---
 
 ## 四、已知限制
 
-1. **License 限制：** 开源版本为只读模式，写操作（CREATE TABLE, INSERT 等）需要企业版 license
-2. **单机部署：** 当前配置仅支持单机多节点，跨机器部署需要修改配置
-3. **系统要求：** 需要先执行 `apt update` 确保依赖库可用
+1. **单机部署：** 当前配置仅支持单机多节点，跨机器部署需要修改配置
+2. **系统要求：** 需要先执行 `apt update` 确保依赖库可用
 
 ---
 
@@ -165,6 +212,11 @@ apt install -y ./*.deb
 opentenbase-ctl init
 opentenbase-ctl start
 opentenbase-ctl status
+
+# 测试 CRUD
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "CREATE TABLE t1(id int, name text) DISTRIBUTE BY SHARD(id);"
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "INSERT INTO t1 VALUES (1, 'hello');"
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "SELECT * FROM t1;"
 ```
 
 ---
