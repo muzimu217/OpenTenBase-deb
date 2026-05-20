@@ -63,6 +63,26 @@ install_dependencies() {
     # Optional packages (may not exist on all distro versions)
     apt-get install -y libpqxx-dev 2>/dev/null || log_warn "libpqxx-dev not available"
     apt-get install -y libcli11-dev 2>/dev/null || log_warn "libcli11-dev not available"
+
+    # Update shared library cache
+    ldconfig
+
+    # Verify critical libraries are findable
+    log_info "Verifying library paths..."
+    for lib in zstd lz4; do
+        if ldconfig -p | grep -q "lib${lib}.so"; then
+            log_info "lib${lib}: found"
+        else
+            log_warn "lib${lib}: not found in ldconfig cache"
+            # Try to find and symlink
+            found=$(find /usr/lib -name "lib${lib}.so*" -type f 2>/dev/null | head -1)
+            if [ -n "$found" ]; then
+                log_info "Found $found, updating ldconfig..."
+                echo "$(dirname "$found")" > /etc/ld.so.conf.d/${lib}.conf
+                ldconfig
+            fi
+        fi
+    done
 }
 
 # Apply patches
