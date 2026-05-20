@@ -57,6 +57,7 @@ install_dependencies() {
         liblz4-dev \
         libzstd-dev \
         libssh2-1-dev \
+        libatomic1 \
         pkg-config \
         libtool
 
@@ -86,11 +87,27 @@ install_dependencies() {
     done
 
     # Ensure -latomic is available for 128-bit atomics
+    # On Debian, libatomic.so may not exist even with libatomic1 installed.
+    # Try multiple approaches to find/create the symlink.
     if [ ! -f /usr/lib/x86_64-linux-gnu/libatomic.so ]; then
+        # Try 1: gcc -print-file-name
         gcc_path=$(gcc -print-file-name=libatomic.so 2>/dev/null)
         if [ -n "$gcc_path" ] && [ -f "$gcc_path" ]; then
             ln -sf "$gcc_path" /usr/lib/x86_64-linux-gnu/libatomic.so
-            log_info "Symlinked libatomic.so"
+            log_info "Symlinked libatomic.so from gcc path: $gcc_path"
+        # Try 2: Symlink from libatomic.so.1
+        elif [ -f /usr/lib/x86_64-linux-gnu/libatomic.so.1 ]; then
+            ln -sf /usr/lib/x86_64-linux-gnu/libatomic.so.1 /usr/lib/x86_64-linux-gnu/libatomic.so
+            log_info "Symlinked libatomic.so from libatomic.so.1"
+        # Try 3: Find it anywhere
+        else
+            found=$(find /usr/lib -name "libatomic.so*" -type f 2>/dev/null | head -1)
+            if [ -n "$found" ]; then
+                ln -sf "$found" /usr/lib/x86_64-linux-gnu/libatomic.so
+                log_info "Symlinked libatomic.so from: $found"
+            else
+                log_warn "libatomic.so not found - 128-bit atomics may fail"
+            fi
         fi
     fi
 }
