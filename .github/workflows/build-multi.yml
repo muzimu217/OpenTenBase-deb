@@ -20,11 +20,11 @@ jobs:
           - distro: ubuntu
             version: "22.04"
             codename: jammy
-            dockerfile: ubuntu-22.04.Dockerfile
+            dockerfile: docker-ubuntu-20.04.Dockerfile
           - distro: ubuntu
             version: "24.04"
             codename: noble
-            dockerfile: ubuntu-24.04.Dockerfile
+            dockerfile: docker-ubuntu-20.04.Dockerfile
           - distro: debian
             version: "11"
             codename: bullseye
@@ -64,7 +64,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            --file ${{ matrix.dockerfile }} \
+            --file packaging/${{ matrix.dockerfile }} \
             --tag opentenbase-builder:${{ matrix.distro }}-${{ matrix.version }} \
             .
 
