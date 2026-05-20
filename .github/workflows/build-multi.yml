@@ -35,17 +35,17 @@ jobs:
             dockerfile: docker-debian-12.Dockerfile
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Clone OpenTenBase source
-        run: |
-          git clone --depth=1 https://github.com/OpenTenBase/OpenTenBase.git source
-
-      - name: Checkout packaging files
+      - name: Checkout packaging repo
         uses: actions/checkout@v4
         with:
           path: packaging
+
+      - name: Checkout OpenTenBase source
+        uses: actions/checkout@v4
+        with:
+          repository: OpenTenBase/OpenTenBase
+          path: source
+          fetch-depth: 1
 
       - name: Merge packaging into source
         run: |
