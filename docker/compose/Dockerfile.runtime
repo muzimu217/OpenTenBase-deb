@@ -1,0 +1,35 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libreadline8 \
+    libssl3 \
+    libxml2 \
+    libcurl4 \
+    libldap-2.5-0 \
+    libpam0g \
+    liblz4-1 \
+    libzstd1 \
+    libssh2-1 \
+    libossp-uuid16 \
+    curl \
+    iputils-ping \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install OpenTenBase packages
+# In production, these would come from the release; for local build, copy from output/
+COPY *.deb /tmp/debs/
+RUN dpkg -i /tmp/debs/*.deb 2>/dev/null || apt-get install -f -y \
+    && rm -rf /tmp/debs
+
+# Create opentenbase user
+RUN useradd -m -s /bin/bash opentenbase || true
+
+# Entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
