@@ -1,4 +1,4 @@
-FROM debian:12
+FROM debian:11
 
 # Non-interactive mode
 ENV DEBIAN_FRONTEND=noninteractive
@@ -41,7 +41,7 @@ RUN if [ ! -f /usr/lib/x86_64-linux-gnu/libatomic.so ] && [ -f /usr/lib/x86_64-l
 WORKDIR /build
 
 # Copy build script
-COPY packaging/build-deb.sh /build/
+COPY packaging/scripts/build-deb.sh /build/
 RUN chmod +x /build/build-deb.sh
 
 # Default: run build

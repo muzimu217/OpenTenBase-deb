@@ -40,7 +40,7 @@ jobs:
           for f in packaging/*; do
             name=$(basename "$f")
             case "$name" in
-              .github|README.md|VERIFICATION.md) continue ;;
+              .github|docker|scripts|docs|test|systemd|*.md) continue ;;
             esac
             cp -a "$f" source/debian/
           done
@@ -135,4 +135,4 @@ jobs:
           generate_release_notes: true
           files: |
             all-debs/**/*.deb
-            install.sh
+            scripts/install.sh

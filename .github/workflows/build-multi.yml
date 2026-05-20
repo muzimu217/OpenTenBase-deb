@@ -16,23 +16,23 @@ jobs:
           - distro: ubuntu
             version: "20.04"
             codename: focal
-            dockerfile: docker-ubuntu-20.04.Dockerfile
+            dockerfile: docker/build/docker-ubuntu-20.04.Dockerfile
           - distro: ubuntu
             version: "22.04"
             codename: jammy
-            dockerfile: docker-ubuntu-20.04.Dockerfile
+            dockerfile: docker/build/docker-ubuntu-20.04.Dockerfile
           - distro: ubuntu
             version: "24.04"
             codename: noble
-            dockerfile: docker-ubuntu-20.04.Dockerfile
+            dockerfile: docker/build/docker-ubuntu-20.04.Dockerfile
           - distro: debian
             version: "11"
             codename: bullseye
-            dockerfile: docker-debian-11.Dockerfile
+            dockerfile: docker/build/docker-debian-11.Dockerfile
           - distro: debian
             version: "12"
             codename: bookworm
-            dockerfile: docker-debian-12.Dockerfile
+            dockerfile: docker/build/docker-debian-12.Dockerfile
 
     steps:
       - name: Checkout packaging repo
@@ -53,7 +53,7 @@ jobs:
           for f in packaging/*; do
             name=$(basename "$f")
             case "$name" in
-              .github|README.md|VERIFICATION.md|ROADMAP.md|ROADMAP_zh.md|CONTRIBUTING.md|CONTRIBUTING_zh.md|docker-*.Dockerfile|build-deb.sh) continue ;;
+              .github|docker|scripts|docs|test|systemd|*.md) continue ;;
             esac
             cp -a "$f" source/debian/
           done
@@ -112,4 +112,4 @@ jobs:
           generate_release_notes: true
           files: |
             all-debs/**/*.deb
-            install.sh
+            scripts/install.sh
