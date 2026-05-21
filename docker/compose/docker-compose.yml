@@ -1,22 +1,10 @@
-version: "3.8"
-
-# OpenTenBase Docker Compose
-# Cluster: 1 GTM + 1 Coordinator + 2 Datanodes
-#
-# Usage:
-#   docker compose up -d
-#   docker compose exec coordinator psql -U opentenbase -d postgres
-#   docker compose down -v
-
 services:
   # ============================================
   # GTM (Global Transaction Manager)
   # ============================================
   gtm:
-    image: opentenbase/runtime:latest
     build:
-      context: .
-      dockerfile: Dockerfile.runtime
+      context: ../runtime
     container_name: opentenbase-gtm
     hostname: gtm
     environment:
@@ -30,19 +18,17 @@ services:
     networks:
       - opentenbase
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 6666 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "nc -z localhost 6666 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   # ============================================
   # Coordinator
   # ============================================
   coordinator:
-    image: opentenbase/runtime:latest
     build:
-      context: .
-      dockerfile: Dockerfile.runtime
+      context: ../runtime
     container_name: opentenbase-coordinator
     hostname: coordinator
     depends_on:
@@ -53,6 +39,7 @@ services:
       - NODE_NAME=coordinator
       - GTM_HOST=gtm
       - GTM_PORT=6666
+      - COORD_HOST=coordinator
       - COORD_PORT=5432
     ports:
       - "5432:5432"
@@ -61,19 +48,17 @@ services:
     networks:
       - opentenbase
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "nc -z localhost 5432 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   # ============================================
-  # Datanode 1 (Primary)
+  # Datanode 1
   # ============================================
   datanode1:
-    image: opentenbase/runtime:latest
     build:
-      context: .
-      dockerfile: Dockerfile.runtime
+      context: ../runtime
     container_name: opentenbase-datanode1
     hostname: datanode1
     depends_on:
@@ -84,6 +69,8 @@ services:
       - NODE_NAME=datanode1
       - GTM_HOST=gtm
       - GTM_PORT=6666
+      - COORD_HOST=coordinator
+      - COORD_PORT=5432
       - DN_PORT=15432
     ports:
       - "15432:15432"
@@ -92,19 +79,17 @@ services:
     networks:
       - opentenbase
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 15432 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "nc -z localhost 15432 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   # ============================================
   # Datanode 2
   # ============================================
   datanode2:
-    image: opentenbase/runtime:latest
     build:
-      context: .
-      dockerfile: Dockerfile.runtime
+      context: ../runtime
     container_name: opentenbase-datanode2
     hostname: datanode2
     depends_on:
@@ -115,6 +100,8 @@ services:
       - NODE_NAME=datanode2
       - GTM_HOST=gtm
       - GTM_PORT=6666
+      - COORD_HOST=coordinator
+      - COORD_PORT=5432
       - DN_PORT=15433
     ports:
       - "15433:15433"
@@ -123,10 +110,10 @@ services:
     networks:
       - opentenbase
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 15433 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "nc -z localhost 15433 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
 volumes:
   gtm_data:
