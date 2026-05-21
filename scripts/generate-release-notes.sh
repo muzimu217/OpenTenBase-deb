@@ -51,7 +51,7 @@ sudo apt-get install -f
 
 \`\`\`bash
 git clone https://github.com/muzimu217/OpenTenBase-deb.git
-cd opentenbase-deb/docker/compose
+cd OpenTenBase-deb/docker/compose
 docker compose up -d
 \`\`\`
 

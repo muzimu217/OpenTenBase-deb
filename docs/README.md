@@ -10,7 +10,7 @@ Ubuntu .deb packaging for [OpenTenBase](https://github.com/OpenTenBase/OpenTenBa
 
 ```bash
 # Download and run installer
-curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi8/install.sh
+curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/install.sh
 sudo bash install.sh
 ```
 
@@ -23,10 +23,10 @@ The installer automatically:
 
 ```bash
 # For Ubuntu 24.04 (Noble)
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi8/opentenbase_5.0-1ubuntu1.noble_all.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi8/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi8/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi8/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase_5.0-1ubuntu1.noble_all.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
 sudo apt install ./*.deb
 ```
 
@@ -252,7 +252,7 @@ Same as OpenTenBase (Apache 2.0).
 ```bash
 # Clone the repository
 git clone https://github.com/muzimu217/OpenTenBase-deb.git
-cd opentenbase-deb
+cd OpenTenBase-deb
 
 # Test build for Ubuntu 20.04
 ./test-build.sh -d ubuntu -v 20.04
