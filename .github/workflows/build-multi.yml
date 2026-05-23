@@ -204,6 +204,7 @@ jobs:
           # Ensure opentenbase user exists
           RUN id opentenbase 2>/dev/null || (addgroup --system opentenbase && adduser --system --ingroup opentenbase --home /var/lib/opentenbase --shell /bin/bash opentenbase)
           RUN chown -R opentenbase:opentenbase /var/lib/opentenbase /var/log/opentenbase 2>/dev/null || true
+          RUN mkdir -p /var/run/opentenbase && chown opentenbase:opentenbase /var/run/opentenbase
 
           COPY test/smoke-test.sh /test/
           RUN chmod +x /test/smoke-test.sh
