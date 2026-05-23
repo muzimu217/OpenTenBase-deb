@@ -190,7 +190,9 @@ jobs:
               && rm -rf /var/lib/apt/lists/*
 
           COPY packages/*.deb /tmp/debs/
-          RUN dpkg -i /tmp/debs/*.deb 2>/dev/null || apt-get install -f -y
+          RUN dpkg --force-depends -i /tmp/debs/*.deb
+          RUN mkdir -p /usr/lib/opentenbase/lib/postgresql
+          RUN ldconfig || true
 
           COPY test/smoke-test.sh /test/
           RUN chmod +x /test/smoke-test.sh
