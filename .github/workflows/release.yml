@@ -1,0 +1,150 @@
+name: Auto Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v5.0-multi10)'
+        required: true
+        type: string
+      draft:
+        description: 'Create as draft release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  # ============================================================
+  # Stage 1: Build all packages
+  # ============================================================
+  build-deb:
+    uses: ./.github/workflows/build-deb.yml
+    secrets: inherit
+
+  build-rpm:
+    uses: ./.github/workflows/build-rpm.yml
+    secrets: inherit
+
+  # ============================================================
+  # Stage 2: Run smoke tests
+  # ============================================================
+  test:
+    needs: [build-deb]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: ubuntu-24.04
+            container: ubuntu:24.04
+          - distro: debian-12
+            container: debian:12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download DEB artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: debs-*-amd64
+          path: debs/
+          merge-multiple: true
+
+      - name: Run smoke test
+        run: |
+          docker run --rm \
+            -v $(pwd)/debs:/debs:ro \
+            -v $(pwd)/test:/test:ro \
+            ${{ matrix.container }} \
+            bash -c "
+              apt-get update -qq && apt-get install -y -qq sudo curl >/dev/null 2>&1
+              cd /debs && dpkg -i *.deb 2>/dev/null || apt-get install -f -y -qq
+              bash /test/smoke-test.sh
+            "
+
+  # ============================================================
+  # Stage 3: Generate release notes and publish
+  # ============================================================
+  release:
+    needs: [build-deb, build-rpm, test]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          chmod +x scripts/generate-release-notes.sh
+          ./scripts/generate-release-notes.sh "${{ steps.version.outputs.tag }}"
+          echo "notes_file=release-notes-${{ steps.version.outputs.tag }}.md" >> $GITHUB_OUTPUT
+
+      - name: Download all DEB artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: debs-*
+          path: release/debs/
+          merge-multiple: true
+
+      - name: Download all RPM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rpms-*
+          path: release/rpms/
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd release
+          find . -type f \( -name "*.deb" -o -name "*.rpm" \) -exec sha256sum {} \; > checksums.sha256
+          cat checksums.sha256
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: OpenTenBase ${{ steps.version.outputs.tag }}
+          body_path: ${{ steps.notes.outputs.notes_file }}
+          draft: ${{ github.event.inputs.draft || false }}
+          prerelease: false
+          files: |
+            release/debs/**/*.deb
+            release/rpms/**/*.rpm
+            release/checksums.sha256
+            scripts/install.sh
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Release ${{ steps.version.outputs.tag }} Published!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Packages" >> $GITHUB_STEP_SUMMARY
+          echo "- DEB: $(find release/debs -name '*.deb' | wc -l) packages" >> $GITHUB_STEP_SUMMARY
+          echo "- RPM: $(find release/rpms -name '*.rpm' | wc -l) packages" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Install" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/download/${{ steps.version.outputs.tag }}/install.sh | sudo bash" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

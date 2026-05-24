@@ -643,6 +643,9 @@ This is the **standard route for official packaging of open source projects**, a
 
 - [ ] **Build APT/RPM repository** (requires domain and server)
 - [ ] **Complete testing for all 30 build targets**
+- [x] **Auto-release workflow** — tag triggers auto-build + test + release notes + publish
+  - [x] `scripts/generate-release-notes.sh` — Auto-generate standardized release notes
+  - [x] `.github/workflows/release.yml` — Auto-release workflow
 - [ ] **Auto-sign and publish** — GPG signing integration into CI pipeline
 - [ ] **Multi-version management** — Support v5.0/v6.0/dev version coexistence
 

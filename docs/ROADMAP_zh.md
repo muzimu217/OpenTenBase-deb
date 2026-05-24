@@ -645,6 +645,9 @@ main "$@"
 
 - [ ] **搭建 APT/RPM 仓库**（需要域名和服务器）
 - [ ] **测试验证** — 对所有 30 个构建目标进行完整测试
+- [x] **自动发布流程** — tag 触发自动构建 + 测试 + 生成 Release Notes + 发布
+  - [x] `scripts/generate-release-notes.sh` — 自动生成标准化发布说明
+  - [x] `.github/workflows/release.yml` — 自动发布工作流
 - [ ] **自动签名和发布** — GPG 签名集成到 CI 流水线
 - [ ] **多版本管理** — 支持 v5.0/v6.0/dev 版本并存
 
