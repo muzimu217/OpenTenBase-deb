@@ -286,7 +286,13 @@ CFLAGS="$CFLAGS -msse4.2 -mcrc32"
 CFLAGS="$CFLAGS -march=armv8-a"
 %endif
 export CFLAGS
-export LDFLAGS="-Wl,-rpath,%{otb_prefix}/lib -latomic"
+export LDFLAGS="-Wl,-rpath,%{otb_prefix}/lib"
+
+# Add -latomic if libatomic.so is available (needed for 128-bit atomics on some distros)
+if ldconfig -p 2>/dev/null | grep -q 'libatomic\.so'; then
+    export LDFLAGS="$LDFLAGS -latomic"
+    echo "NOTE: libatomic found, adding -latomic to LDFLAGS"
+fi
 
 CONFIGURE_OPTS="--prefix=%{otb_prefix} \
     --sysconfdir=/etc/opentenbase/%{otb_ver} \
