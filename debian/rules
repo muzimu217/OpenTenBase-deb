@@ -55,8 +55,8 @@ override_dh_auto_configure:
 
 override_dh_auto_build:
 	# Fix flex lex.backup error on newer flex (Ubuntu 25.04+)
-	# Make lex.backup removal non-fatal (newer flex may not create it)
-	sed -i '/lex\.backup/s/$$/ || true/' src/Makefile.global 2>/dev/null || true
+	# Parallel flex invocations with -b flag race on lex.backup; pre-create
+	for d in src/interfaces/ecpg/preproc src/fe_utils; do touch "$$d/lex.backup" 2>/dev/null; done || true
 	# Pre-build libpq and generate objfiles.txt (race condition fix)
 	# libpq's Makefile has 'all: all-lib' but doesn't generate objfiles.txt.
 	# The postgres binary needs src/interfaces/libpq/objfiles.txt to link against libpq.
