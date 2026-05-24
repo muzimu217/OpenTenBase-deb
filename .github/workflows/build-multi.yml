@@ -79,6 +79,7 @@ jobs:
           cp -a packaging/debian/* source/debian/
           cp -a packaging/config source/
           cp -a packaging/patches source/debian/
+          cp -a packaging/scripts source/
 
       - name: Set up Docker Buildx
         if: steps.check.outputs.should_build == 'true'
