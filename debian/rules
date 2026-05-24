@@ -55,7 +55,7 @@ override_dh_auto_configure:
 
 override_dh_auto_build:
 	# Fix flex lex.backup race: use rm -f so missing file doesn't fail
-	sed -i 's/\trm lex\.backup/\trm -f lex.backup/' src/Makefile.global
+	sed -i 's/rm lex\.backup/rm -f lex.backup/g' src/Makefile.global
 	# Pre-build libpq and generate objfiles.txt (race condition fix)
 	# libpq's Makefile has 'all: all-lib' but doesn't generate objfiles.txt.
 	# The postgres binary needs src/interfaces/libpq/objfiles.txt to link against libpq.
