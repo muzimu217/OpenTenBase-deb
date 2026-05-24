@@ -641,6 +641,10 @@ This is the **standard route for official packaging of open source projects**, a
   - [x] Distributed tables (SHARD + REPLICATION) working
   - [x] INSERT/SELECT/UPDATE/DELETE/JOIN/INDEX all verified
   - [x] All 15 CI targets passing (7 DEB + 8 RPM)
+- [x] **CI workflow smoke test fix** — Dockerfile.test updated for versioned paths (/usr/lib/opentenbase/5.0/)
+  - [x] `build-multi.yml` versioned paths in Docker test container
+  - [x] `release.yml` proper Dockerfile.test with dependency installation
+  - [x] GitHub Release `v5.0-multi11` published with 50 assets (42 DEB + 7 RPM + install.sh)
 
 ### In Progress 🔄
 
