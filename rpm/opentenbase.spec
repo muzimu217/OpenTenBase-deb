@@ -91,6 +91,7 @@ CONFIGURE_OPTS="--prefix=%{otb_prefix} \
 if [ -f /usr/include/zstd.h ] && pkg-config --exists libzstd 2>/dev/null; then
     CONFIGURE_OPTS="$CONFIGURE_OPTS --with-zstd"
 else
+    CONFIGURE_OPTS="$CONFIGURE_OPTS --without-zstd"
     echo "NOTE: zstd-devel not found, building without zstd support"
 fi
 
