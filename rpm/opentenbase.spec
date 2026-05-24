@@ -312,7 +312,9 @@ fi
 # If zstd-devel is not available, remove -lzstd from linker flags
 # (configure may still add it even with --without-zstd due to stub header)
 if [ "$ZSTD_FOUND" = "0" ]; then
-    find . -name 'Makefile.global' -exec sed -i 's/-lzstd//g' {} +
+    find . \( -name 'Makefile*' -o -name '*.mak' \) -exec sed -i 's/-lzstd//g' {} +
+    # Also patch configure output that may be cached
+    [ -f config.status ] && sed -i 's/-lzstd//g' config.status
 fi
 
 make -j$(nproc)
