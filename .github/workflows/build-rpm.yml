@@ -113,13 +113,7 @@ jobs:
           if [ -f /etc/rocky-release ] || [ -f /etc/almalinux-release ]; then
             REL=$(rpm -q --queryformat '%{VERSION}' -f /etc/redhat-release 2>/dev/null | cut -d. -f1)
             if [ "$REL" = "9" ]; then
-              cat > /etc/yum.repos.d/crb.repo << 'REPO'
-[crb]
-name=CRB
-baseurl=https://dl.rockylinux.org/pub/rocky/9/CRB/x86_64/os/
-enabled=1
-gpgcheck=0
-REPO
+              printf '[crb]\nname=CRB\nbaseurl=https://dl.rockylinux.org/pub/rocky/9/CRB/x86_64/os/\nenabled=1\ngpgcheck=0\n' > /etc/yum.repos.d/crb.repo
             fi
           fi
 
