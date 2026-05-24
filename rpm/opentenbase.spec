@@ -289,7 +289,9 @@ export CFLAGS
 export LDFLAGS="-Wl,-rpath,%{otb_prefix}/lib"
 
 # Add -latomic if available (needed for 128-bit atomics on some distros)
-if { [ -f /usr/lib64/libatomic.so ] || [ -f /usr/lib/libatomic.so ] || ldconfig -p 2>/dev/null | grep -q 'libatomic\.so'; }; then
+# Check standard paths, ldconfig, and GCC library directory
+LIBATOMIC_PATH=$(find /usr/lib64 /usr/lib /usr/lib/gcc -name 'libatomic.so' 2>/dev/null | head -1)
+if [ -n "$LIBATOMIC_PATH" ] || ldconfig -p 2>/dev/null | grep -q 'libatomic\.so'; then
     export LDFLAGS="$LDFLAGS -latomic"
     echo "NOTE: libatomic found, adding -latomic to LDFLAGS"
 else
