@@ -11,6 +11,11 @@ Source2:        pg_hba.conf.template
 %define otb_ver %{version}
 %define otb_prefix /usr/lib/opentenbase/%{otb_ver}
 
+# Disable Fedora's annotated/hardened build macros
+# These inject -specs=...annobin-cc1 into LDFLAGS which breaks configure
+%undefine _annotated_build
+%undefine _hardened_build
+
 # Filter out GLIBC_PRIVATE dependency (false positive from RPM auto-detection)
 %global __requires_exclude ^libc\\.so\\.6\\(GLIBC_PRIVATE\\)
 
@@ -286,7 +291,8 @@ CFLAGS="$CFLAGS -msse4.2 -mcrc32"
 CFLAGS="$CFLAGS -march=armv8-a"
 %endif
 export CFLAGS
-export LDFLAGS="$LDFLAGS -Wl,-rpath,%{otb_prefix}/lib"
+# Set LDFLAGS cleanly (RPM macros are sanitized by %undefine above)
+export LDFLAGS="-Wl,-rpath,%{otb_prefix}/lib"
 
 # Add -latomic on Fedora (needed for 128-bit atomics: __sync_val_compare_and_swap_16)
 if [ -f /etc/fedora-release ]; then
