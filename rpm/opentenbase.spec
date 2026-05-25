@@ -545,23 +545,29 @@ ENABLED_NODES="gtm dn1 coord"
 OTB_USER="opentenbase"
 OTB_GROUP="opentenbase"
 OTB_HOME="%{otb_prefix}"
+COORD_NODENAME="coord1"
+DN1_NODENAME="dn1"
+START_ORDER="gtm coord dn1"
+STOP_ORDER="dn1 coord gtm"
+GTM_HOST=127.0.0.1
 GTM_PGDATA="/var/lib/opentenbase/%{otb_ver}/gtm"
 GTM_PORT=6666
 GTM_LOG="/var/log/opentenbase/%{otb_ver}/gtm.log"
+COORD_HOST=127.0.0.1
 COORD_PGDATA="/var/lib/opentenbase/%{otb_ver}/coord"
 COORD_PORT=5432
-COORD_NODENAME="coord1"
+COORD_POOLER_PORT=6667
+COORD_FORWARD_PORT=6669
 COORD_LOG="/var/log/opentenbase/%{otb_ver}/coord.log"
+DN_HOST=127.0.0.1
 DN1_PGDATA="/var/lib/opentenbase/%{otb_ver}/dn1"
 DN1_PORT=15432
-DN1_NODENAME="dn001"
-DN1_LOG="/var/log/opentenbase/%{otb_ver}/dn1.log"
-COORD_FORWARD_PORT=6669
-DN1_FORWARD_PORT=6670
-COORD_POOLER_PORT=6667
+DN_PORT=15432
 DN1_POOLER_PORT=6668
-START_ORDER="gtm coord dn1"
-STOP_ORDER="coord dn1 gtm"
+DN_POOLER_PORT=6668
+DN1_FORWARD_PORT=6670
+DN_FORWARD_PORT=6670
+DN1_LOG="/var/log/opentenbase/%{otb_ver}/dn1.log"
 CONF
 
 %files
