@@ -89,12 +89,21 @@ jobs:
             pkg-config libtool git ca-certificates
           # Install libatomic-dev if available (provides .so symlink for linking)
           apt-get install -y libatomic-dev 2>/dev/null || true
-          # Ensure libatomic.so symlink exists
+          # Ensure libatomic.so symlink exists for linking
+          echo "=== libatomic files before symlink fix ==="
+          find /usr/lib -name 'libatomic*' 2>/dev/null || true
           for dir in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu; do
-            if [ -f "$dir/libatomic.so.1" ] && [ ! -f "$dir/libatomic.so" ]; then
-              ln -s libatomic.so.1 "$dir/libatomic.so"
+            if [ -f "$dir/libatomic.so.1" ]; then
+              # Force create/replace the .so symlink
+              ln -sf libatomic.so.1 "$dir/libatomic.so"
+              echo "Created symlink: $dir/libatomic.so -> libatomic.so.1"
             fi
           done
+          echo "=== libatomic files after symlink fix ==="
+          find /usr/lib -name 'libatomic*' 2>/dev/null || true
+          # Verify the symlink works
+          echo "=== Testing -latomic ==="
+          echo 'int main(){}' | gcc -x c - -latomic -o /dev/null 2>&1 || echo "WARNING: -latomic linking test failed"
 
           # Install optional deps (may not exist on older distros)
           apt-get install -y libossp-uuid-dev 2>/dev/null || true
