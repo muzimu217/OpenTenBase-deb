@@ -19,76 +19,35 @@ on:
         type: string
 
 jobs:
-  build-deb:
+  build-deb-amd64:
     strategy:
       fail-fast: false
       matrix:
         include:
-          # ===== AMD64 Builds =====
-          # Ubuntu 20.04 LTS (Focal)
           - name: ubuntu-20.04-amd64
-            os: ubuntu-latest
-            arch: amd64
             container: ubuntu:20.04
             codename: focal
-          # Ubuntu 22.04 LTS (Jammy)
           - name: ubuntu-22.04-amd64
-            os: ubuntu-latest
-            arch: amd64
             container: ubuntu:22.04
             codename: jammy
-          # Ubuntu 24.04 LTS (Noble)
           - name: ubuntu-24.04-amd64
-            os: ubuntu-latest
-            arch: amd64
             container: ubuntu:24.04
             codename: noble
-          # Ubuntu 25.04 (Plucky)
           - name: ubuntu-25.04-amd64
-            os: ubuntu-latest
-            arch: amd64
             container: ubuntu:25.04
             codename: plucky
-          # Debian 11 (Bullseye)
           - name: debian-11-amd64
-            os: ubuntu-latest
-            arch: amd64
             container: debian:bullseye
             codename: bullseye
-          # Debian 12 (Bookworm)
           - name: debian-12-amd64
-            os: ubuntu-latest
-            arch: amd64
             container: debian:bookworm
             codename: bookworm
-          # Debian 13 (Trixie)
           - name: debian-13-amd64
-            os: ubuntu-latest
-            arch: amd64
             container: debian:trixie
             codename: trixie
-          # ===== ARM64 Builds =====
-          # Ubuntu 22.04 LTS (Jammy) - ARM64
-          - name: ubuntu-22.04-arm64
-            os: ubuntu-24.04-arm
-            arch: arm64
-            container: ubuntu:22.04
-            codename: jammy
-          # Ubuntu 24.04 LTS (Noble) - ARM64
-          - name: ubuntu-24.04-arm
-            os: ubuntu-24.04-arm
-            arch: arm64
-            container: ubuntu:24.04
-            codename: noble
-          # Debian 12 (Bookworm) - ARM64
-          - name: debian-12-arm64
-            os: ubuntu-24.04-arm
-            arch: arm64
-            container: debian:bookworm
-            codename: bookworm
 
     name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     container:
       image: ${{ matrix.container }}
@@ -107,25 +66,14 @@ jobs:
             libssh2-1-dev \
             libatomic1 \
             pkg-config libtool git ca-certificates
-          # Install libatomic-dev if available (provides .so symlink for linking)
           apt-get install -y libatomic-dev 2>/dev/null || true
-          # Ensure libatomic.so symlink exists for linking
-          echo "=== libatomic files before symlink fix ==="
-          find /usr/lib -name 'libatomic*' 2>/dev/null || true
           for dir in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu; do
             if [ -f "$dir/libatomic.so.1" ]; then
-              # Force create/replace the .so symlink
               ln -sf libatomic.so.1 "$dir/libatomic.so"
-              echo "Created symlink: $dir/libatomic.so -> libatomic.so.1"
             fi
           done
-          echo "=== libatomic files after symlink fix ==="
-          find /usr/lib -name 'libatomic*' 2>/dev/null || true
-          # Verify the symlink works
           echo "=== Testing -latomic ==="
           echo 'int main(){}' | gcc -x c - -latomic -o /dev/null 2>&1 || echo "WARNING: -latomic linking test failed"
-
-          # Install optional deps (may not exist on older distros)
           apt-get install -y libossp-uuid-dev 2>/dev/null || true
           apt-get install -y libcli11-dev 2>/dev/null || true
           apt-get install -y libpqxx-dev 2>/dev/null || true
@@ -148,7 +96,6 @@ jobs:
         run: |
           cd /tmp/source/OpenTenBase
           cp -r "$GITHUB_WORKSPACE/opentenbase-pkg/debian/" ./debian/
-          # Copy config and scripts from packaging repo (merge into existing dirs)
           for f in opentenbase-ctl opentenbase.conf gtm.conf.template pg_hba.conf.template postgresql.conf.coord.template postgresql.conf.dn.template; do
             if [ -f "$GITHUB_WORKSPACE/opentenbase-pkg/config/$f" ]; then
               cp "$GITHUB_WORKSPACE/opentenbase-pkg/config/$f" ./config/
@@ -159,7 +106,6 @@ jobs:
             cp -r "$GITHUB_WORKSPACE/opentenbase-pkg/scripts/"* ./scripts/ 2>/dev/null || true
           fi
           ls -la config/opentenbase-ctl 2>&1 || echo "WARNING: config/opentenbase-ctl not found"
-          # Override OTB_VERSION in debian/rules if workflow_dispatch provides a version
           if [ -n "$OTB_VERSION" ] && [ "$OTB_VERSION" != "5.0" ]; then
             sed -i "s/^OTB_VERSION := .*/OTB_VERSION := $OTB_VERSION/" debian/rules
           fi
@@ -171,7 +117,6 @@ jobs:
         run: |
           mkdir -p "$GITHUB_WORKSPACE/debs"
           cp /tmp/source/*.deb "$GITHUB_WORKSPACE/debs/" 2>/dev/null || true
-          # Rename packages with distro name to avoid overwrites in release
           cd "$GITHUB_WORKSPACE/debs"
           for deb in *.deb; do
             [ -f "$deb" ] || continue
@@ -180,7 +125,7 @@ jobs:
               mv "$deb" "$newname"
             fi
           done
-          ls -la *.deb
+          ls -la *.deb 2>/dev/null || true
 
       - name: Run lintian
         if: always()
@@ -204,3 +149,110 @@ jobs:
         run: |
           rm -rf /tmp/source
           apt-get clean
+
+  build-deb-arm64:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu-22.04-arm64
+            container: arm64v8/ubuntu:22.04
+            codename: jammy
+          - name: ubuntu-24.04-arm64
+            container: arm64v8/ubuntu:24.04
+            codename: noble
+          - name: debian-12-arm64
+            container: arm64v8/debian:bookworm
+            codename: bookworm
+
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Set up QEMU for arm64
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Checkout packaging repo
+        uses: actions/checkout@v4
+        with:
+          path: opentenbase-pkg
+
+      - name: Clone OpenTenBase upstream source
+        run: |
+          git clone --depth=1 \
+            https://github.com/OpenTenBase/OpenTenBase.git \
+            /tmp/source/OpenTenBase
+
+      - name: Build DEB packages (arm64 via QEMU)
+        env:
+          OTB_VERSION: ${{ github.event.inputs.version || '5.0' }}
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v /tmp/source/OpenTenBase:/tmp/source:ro \
+            -v ${{ github.workspace }}/opentenbase-pkg:/tmp/pkg:ro \
+            -v ${{ github.workspace }}/output:/output \
+            -e OTB_VERSION="$OTB_VERSION" \
+            ${{ matrix.container }} \
+            bash -c '
+              set -e
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update
+              apt-get install -y \
+                build-essential debhelper fakeroot quilt \
+                bison flex perl \
+                libreadline-dev zlib1g-dev libssl-dev libpam0g-dev \
+                libxml2-dev libldap2-dev uuid-dev \
+                libcurl4-openssl-dev liblz4-dev libzstd-dev \
+                libssh2-1-dev \
+                libatomic1 libatomic-dev \
+                pkg-config libtool git ca-certificates 2>/dev/null
+              for dir in /usr/lib/aarch64-linux-gnu; do
+                if [ -f "$dir/libatomic.so.1" ] && [ ! -f "$dir/libatomic.so" ]; then
+                  ln -sf libatomic.so.1 "$dir/libatomic.so"
+                fi
+              done
+
+              cp -r /tmp/source /tmp/build
+              cd /tmp/build
+              cp -r /tmp/pkg/debian/ ./debian/
+              for f in opentenbase-ctl opentenbase.conf gtm.conf.template pg_hba.conf.template postgresql.conf.coord.template postgresql.conf.dn.template; do
+                if [ -f "/tmp/pkg/config/$f" ]; then
+                  cp "/tmp/pkg/config/$f" ./config/
+                fi
+              done
+              if [ -d "/tmp/pkg/scripts" ]; then
+                mkdir -p ./scripts
+                cp -r /tmp/pkg/scripts/* ./scripts/ 2>/dev/null || true
+              fi
+              if [ -n "$OTB_VERSION" ] && [ "$OTB_VERSION" != "5.0" ]; then
+                sed -i "s/^OTB_VERSION := .*/OTB_VERSION := $OTB_VERSION/" debian/rules
+              fi
+              set -o pipefail
+              fakeroot debian/rules binary 2>&1 | tee /tmp/build.log
+              cp /tmp/build/*.deb /output/ 2>/dev/null || true
+            '
+
+      - name: Collect DEB packages
+        if: always()
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/debs"
+          cp ${{ github.workspace }}/output/*.deb "$GITHUB_WORKSPACE/debs/" 2>/dev/null || true
+          cd "$GITHUB_WORKSPACE/debs"
+          for deb in *.deb; do
+            [ -f "$deb" ] || continue
+            newname=$(echo "$deb" | sed "s/_5.0-1ubuntu1_/_5.0-1ubuntu1~${{ matrix.codename }}_/")
+            if [ "$newname" != "$deb" ]; then
+              mv "$deb" "$newname"
+            fi
+          done
+          ls -la *.deb 2>/dev/null || true
+
+      - name: Upload DEB packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: debs-${{ matrix.name }}
+          path: ${{ github.workspace }}/debs/*.deb
+          retention-days: 30

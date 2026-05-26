@@ -19,76 +19,31 @@ on:
         type: string
 
 jobs:
-  build-rpm:
+  build-rpm-x86_64:
+    if: ${{ !inputs.arch_only || inputs.arch_only == 'x86_64' }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # ===== x86_64 Builds =====
-          # CentOS Stream 8
           - name: centos-stream-8-x86_64
-            os: ubuntu-latest
-            arch: x86_64
             container: quay.io/centos/centos:stream8
-          # CentOS Stream 9
           - name: centos-stream-9-x86_64
-            os: ubuntu-latest
-            arch: x86_64
             container: quay.io/centos/centos:stream9
-          # Rocky Linux 8
           - name: rockylinux-8-x86_64
-            os: ubuntu-latest
-            arch: x86_64
             container: rockylinux:8
-          # Rocky Linux 9
           - name: rockylinux-9-x86_64
-            os: ubuntu-latest
-            arch: x86_64
             container: rockylinux:9
-          # AlmaLinux 8
           - name: almalinux-8-x86_64
-            os: ubuntu-latest
-            arch: x86_64
             container: almalinux:8
-          # AlmaLinux 9
           - name: almalinux-9-x86_64
-            os: ubuntu-latest
-            arch: x86_64
             container: almalinux:9
-          # Fedora 40
           - name: fedora-40-x86_64
-            os: ubuntu-latest
-            arch: x86_64
             container: quay.io/fedora/fedora:40
-          # OpenEuler x86_64
           - name: openeuler-22.03-x86_64
-            os: ubuntu-latest
-            arch: x86_64
             container: openeuler/openeuler:22.03
-          # ===== aarch64 Builds =====
-          # OpenEuler aarch64
-          - name: openeuler-22.03-aarch64
-            os: ubuntu-24.04-arm
-            arch: aarch64
-            container: openeuler/openeuler:22.03
-          # Rocky Linux 9 aarch64
-          - name: rockylinux-9-aarch64
-            os: ubuntu-24.04-arm
-            arch: aarch64
-            container: rockylinux:9
-          # AlmaLinux 9 aarch64
-          - name: almalinux-9-aarch64
-            os: ubuntu-24.04-arm
-            arch: aarch64
-            container: almalinux:9
-          # CentOS Stream 9 aarch64
-          - name: centos-stream-9-aarch64
-            os: ubuntu-24.04-arm
-            arch: aarch64
-            container: quay.io/centos/centos:stream9
 
     name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     continue-on-error: ${{ contains(matrix.name, 'openeuler') }}
     container:
@@ -97,24 +52,17 @@ jobs:
     steps:
       - name: Enable additional repos and install deps
         run: |
-          # OpenEuler: use Chinese mirrors for faster downloads
           if [ -f /etc/openEuler-release ] || grep -qi openeuler /etc/os-release 2>/dev/null; then
             sed -i 's|repo.openeuler.org|mirrors.aliyun.com/openeuler|g' /etc/yum.repos.d/*.repo 2>/dev/null || true
           fi
-
-          # CentOS Stream 8 EOL fix: use vault mirrors
           if grep -q 'CentOS Stream release 8' /etc/redhat-release 2>/dev/null; then
             sed -i 's|mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-Stream-*.repo
             sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Stream-*.repo
           fi
-
-          # Enable CRB/PowerTools repos (needed for zstd-devel, libssh2-devel)
           dnf install -y dnf-plugins-core 2>/dev/null || true
           for repo in crb powertools; do
             dnf config-manager --set-enabled "$repo" 2>/dev/null || true
           done
-
-          # Also try adding CRB repo directly for Rocky/Alma 9
           if [ -f /etc/rocky-release ] || [ -f /etc/almalinux-release ]; then
             REL=$(rpm -q --queryformat '%{VERSION}' -f /etc/redhat-release 2>/dev/null | cut -d. -f1)
             if [ "$REL" = "9" ]; then
@@ -127,22 +75,15 @@ jobs:
               printf "[crb]\nname=CRB\nbaseurl=${CRB_URL}\nenabled=1\ngpgcheck=0\n" > /etc/yum.repos.d/crb.repo
             fi
           fi
-
-          # Install core build deps
           dnf install -y \
             gcc gcc-c++ make bison flex perl \
             readline-devel zlib-devel openssl-devel pam-devel \
             libxml2-devel openldap-devel libuuid-devel \
             libcurl-devel lz4-devel \
             pkg-config libtool rpm-build rpmlint git
-
-          # Install optional deps (zstd-devel may be in CRB)
           dnf install -y zstd-devel 2>/dev/null || true
           dnf install -y libssh2-devel 2>/dev/null || true
-
-          # Ensure libatomic is available for 128-bit atomics
           dnf install -y libatomic 2>/dev/null || true
-          # Create libatomic.so symlink if missing (only .so.1 provided by runtime pkg)
           for dir in /usr/lib64 /usr/lib; do
             if [ -f "$dir/libatomic.so.1" ] && [ ! -f "$dir/libatomic.so" ]; then
               ln -s libatomic.so.1 "$dir/libatomic.so"
@@ -207,3 +148,122 @@ jobs:
         run: |
           rm -rf /tmp/source
           dnf clean all
+
+  build-rpm-aarch64:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: openeuler-22.03-aarch64
+            container: openeuler/openeuler:22.03
+          - name: rockylinux-9-aarch64
+            container: rockylinux:9
+          - name: almalinux-9-aarch64
+            container: almalinux:9
+          - name: centos-stream-9-aarch64
+            container: quay.io/centos/centos:stream9
+
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    continue-on-error: ${{ contains(matrix.name, 'openeuler') }}
+
+    steps:
+      - name: Set up QEMU for aarch64
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          path: opentenbase-pkg
+
+      - name: Clone OpenTenBase upstream source
+        run: |
+          git clone --depth=1 \
+            https://github.com/OpenTenBase/OpenTenBase.git \
+            /tmp/source/OpenTenBase
+
+      - name: Build RPM packages (aarch64 via QEMU)
+        run: |
+          docker run --rm --platform linux/arm64 \
+            -v /tmp/source/OpenTenBase:/tmp/source/OpenTenBase:ro \
+            -v ${{ github.workspace }}/opentenbase-pkg:/tmp/opentenbase-pkg:ro \
+            -v ${{ github.workspace }}/output:/output \
+            ${{ matrix.container }} \
+            bash -c '
+              set -e
+              # Mirror setup
+              if [ -f /etc/openEuler-release ] || grep -qi openeuler /etc/os-release 2>/dev/null; then
+                sed -i "s|repo.openeuler.org|mirrors.aliyun.com/openeuler|g" /etc/yum.repos.d/*.repo 2>/dev/null || true
+              fi
+              if grep -q "CentOS Stream release 8" /etc/redhat-release 2>/dev/null; then
+                sed -i "s|mirrorlist=|#mirrorlist=|g" /etc/yum.repos.d/CentOS-Stream-*.repo
+                sed -i "s|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-Stream-*.repo
+              fi
+              dnf install -y dnf-plugins-core 2>/dev/null || true
+              for repo in crb powertools; do
+                dnf config-manager --set-enabled "$repo" 2>/dev/null || true
+              done
+              if [ -f /etc/rocky-release ] || [ -f /etc/almalinux-release ]; then
+                REL=$(rpm -q --queryformat "%{VERSION}" -f /etc/redhat-release 2>/dev/null | cut -d. -f1)
+                if [ "$REL" = "9" ]; then
+                  ARCH_VAL=$(uname -m)
+                  if [ -f /etc/rocky-release ]; then
+                    CRB_URL="https://dl.rockylinux.org/pub/rocky/9/CRB/${ARCH_VAL}/os/"
+                  else
+                    CRB_URL="https://repo.almalinux.org/almalinux/9/CRB/${ARCH_VAL}/os/"
+                  fi
+                  printf "[crb]\nname=CRB\nbaseurl=${CRB_URL}\nenabled=1\ngpgcheck=0\n" > /etc/yum.repos.d/crb.repo
+                fi
+              fi
+              dnf install -y \
+                gcc gcc-c++ make bison flex perl \
+                readline-devel zlib-devel openssl-devel pam-devel \
+                libxml2-devel openldap-devel libuuid-devel \
+                libcurl-devel lz4-devel \
+                pkg-config libtool rpm-build rpmlint git
+              dnf install -y zstd-devel 2>/dev/null || true
+              dnf install -y libssh2-devel 2>/dev/null || true
+              dnf install -y libatomic 2>/dev/null || true
+              for dir in /usr/lib64 /usr/lib; do
+                if [ -f "$dir/libatomic.so.1" ] && [ ! -f "$dir/libatomic.so" ]; then
+                  ln -s libatomic.so.1 "$dir/libatomic.so"
+                fi
+              done
+
+              # Copy sources
+              cp -r /tmp/source/OpenTenBase /tmp/build-source
+              cp -r /tmp/opentenbase-pkg /tmp/build-pkg
+
+              # Build
+              cd /tmp/build-pkg/rpm
+              bash build-rpm.sh --source-dir /tmp/build-source --version 5.0
+
+              # Copy output
+              ARCH_DIR=$(uname -m)
+              cp ~/rpmbuild/RPMS/${ARCH_DIR}/*.rpm /output/ 2>/dev/null || true
+              cp ~/rpmbuild/RPMS/noarch/*.rpm /output/ 2>/dev/null || true
+              cp ~/rpmbuild/SRPMS/*.rpm /output/ 2>/dev/null || true
+            '
+
+      - name: Rename RPM packages with distro name
+        if: always()
+        run: |
+          cd ${{ github.workspace }}/output 2>/dev/null || true
+          for rpm in *.rpm; do
+            [ -f "$rpm" ] || continue
+            newname=$(echo "$rpm" | sed "s/-5\.0-1\./-5.0-1.${{ matrix.name }}./")
+            if [ "$newname" != "$rpm" ]; then
+              mv "$rpm" "$newname"
+            fi
+          done
+          ls -la *.rpm 2>/dev/null || true
+
+      - name: Upload RPM packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpms-${{ matrix.name }}
+          path: ${{ github.workspace }}/output/*.rpm
+          retention-days: 30
