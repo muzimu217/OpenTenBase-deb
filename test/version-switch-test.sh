@@ -166,47 +166,54 @@ if command -v opentenbase-ctl >/dev/null 2>&1; then
     sudo opentenbase-ctl stop 2>/dev/null || true
     timeout 60 sudo opentenbase-ctl init 2>&1 && pass "opentenbase-ctl init succeeded" || fail "opentenbase-ctl init failed"
 
-    timeout 120 sudo opentenbase-ctl start 2>&1 && pass "opentenbase-ctl start succeeded" || fail "opentenbase-ctl start failed"
+    CLUSTER_STARTED=true
+    timeout 120 sudo opentenbase-ctl start 2>&1 && pass "opentenbase-ctl start succeeded" || { CLUSTER_STARTED=false; fail "opentenbase-ctl start failed (timeout, known issue on some distros)"; }
 
-    sleep 5
+    if [ "$CLUSTER_STARTED" = true ]; then
+        sleep 5
 
-    # Check GTM
-    if pgrep -f "gtm" >/dev/null 2>&1; then
-        pass "GTM process running"
+        # Check GTM
+        if pgrep -f "gtm" >/dev/null 2>&1; then
+            pass "GTM process running"
+        else
+            fail "GTM process not found"
+        fi
+
+        # Check coordinator
+        if pgrep -f "postgres.*coordinator" >/dev/null 2>&1; then
+            pass "Coordinator process running"
+        else
+            fail "Coordinator process not found"
+        fi
+
+        # SQL test
+        SQL_RESULT=$(run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -t -A -c "SELECT 1;" 2>&1 || echo "FAIL")
+        if [ "$SQL_RESULT" = "1" ]; then
+            pass "SQL connection on v5.0"
+        else
+            fail "SQL connection failed: $SQL_RESULT"
+        fi
+
+        # CRUD test
+        run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "CREATE TABLE vtest (id int, name text);" 2>&1 && \
+            pass "CREATE TABLE on v5.0" || fail "CREATE TABLE on v5.0"
+
+        run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "INSERT INTO vtest VALUES (1, 'v5test');" 2>&1 && \
+            pass "INSERT on v5.0" || fail "INSERT on v5.0"
+
+        RESULT=$(run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -t -A -c "SELECT name FROM vtest WHERE id=1;" 2>&1)
+        [ "$RESULT" = "v5test" ] && pass "SELECT on v5.0" || fail "SELECT on v5.0 (got $RESULT)"
+
+        run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "DROP TABLE vtest;" 2>&1
+
+        # Stop cluster
+        timeout 30 sudo opentenbase-ctl stop 2>&1 && pass "Cluster stopped cleanly" || fail "Cluster stop failed"
+        sleep 2
     else
-        fail "GTM process not found"
+        info "Skipping CRUD tests (cluster start failed)"
+        # Clean up any running processes
+        sudo opentenbase-ctl stop 2>/dev/null || true
     fi
-
-    # Check coordinator
-    if pgrep -f "postgres.*coordinator" >/dev/null 2>&1; then
-        pass "Coordinator process running"
-    else
-        fail "Coordinator process not found"
-    fi
-
-    # SQL test
-    SQL_RESULT=$(run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -t -A -c "SELECT 1;" 2>&1 || echo "FAIL")
-    if [ "$SQL_RESULT" = "1" ]; then
-        pass "SQL connection on v5.0"
-    else
-        fail "SQL connection failed: $SQL_RESULT"
-    fi
-
-    # CRUD test
-    run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "CREATE TABLE vtest (id int, name text);" 2>&1 && \
-        pass "CREATE TABLE on v5.0" || fail "CREATE TABLE on v5.0"
-
-    run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "INSERT INTO vtest VALUES (1, 'v5test');" 2>&1 && \
-        pass "INSERT on v5.0" || fail "INSERT on v5.0"
-
-    RESULT=$(run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -t -A -c "SELECT name FROM vtest WHERE id=1;" 2>&1)
-    [ "$RESULT" = "v5test" ] && pass "SELECT on v5.0" || fail "SELECT on v5.0 (got $RESULT)"
-
-    run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "DROP TABLE vtest;" 2>&1
-
-    # Stop cluster
-    timeout 30 sudo opentenbase-ctl stop 2>&1 && pass "Cluster stopped cleanly" || fail "Cluster stop failed"
-    sleep 2
 fi
 
 # ============================================================
