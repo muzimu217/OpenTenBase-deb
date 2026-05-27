@@ -61,10 +61,11 @@ id $OTB_USER 2>/dev/null || {
 # ============================================================
 info "=== Test 1: Install version 5.0 ==="
 
-if [ -f "$REPO_DIR/scripts/install.sh" ]; then
-    bash "$REPO_DIR/scripts/install.sh" --version 5.0 /tmp/debs 2>&1 || \
-    bash "$REPO_DIR/scripts/install.sh" --version 5.0 /tmp/rpms 2>&1 || \
-    bash "$REPO_DIR/scripts/install.sh" --version 5.0 2>&1
+# In CI, packages are pre-installed by the workflow. Only call install.sh if needed.
+if [ -d /usr/lib/opentenbase/5.0/bin ]; then
+    info "Version 5.0 already installed, skipping install.sh"
+elif [ -f "$REPO_DIR/scripts/install.sh" ]; then
+    bash "$REPO_DIR/scripts/install.sh" --version 5.0 2>&1 || true
 fi
 
 # Verify installation
@@ -104,8 +105,6 @@ fi
 info "=== Test 2: Install version 2.6.0 ==="
 
 if [ -f "$REPO_DIR/scripts/install.sh" ]; then
-    bash "$REPO_DIR/scripts/install.sh" --version 2.6.0 /tmp/debs 2>&1 || \
-    bash "$REPO_DIR/scripts/install.sh" --version 2.6.0 /tmp/rpms 2>&1 || \
     bash "$REPO_DIR/scripts/install.sh" --version 2.6.0 2>&1 || true
 fi
 
