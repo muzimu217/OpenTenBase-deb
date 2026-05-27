@@ -133,10 +133,17 @@ jobs:
     steps:
       - name: Install deps
         run: |
-          dnf install -y sudo procps-ng libatomic curl util-linux 2>&1 || \
-            yum install -y sudo procps-ng libatomic curl util-linux 2>&1 || true
-          # Verify sudo or runuser is available
-          command -v sudo || command -v runuser || { echo "ERROR: neither sudo nor runuser available"; exit 1; }
+          dnf install -y sudo procps-ng libatomic curl util-linux gcc 2>&1 || \
+            yum install -y sudo procps-ng libatomic curl util-linux gcc 2>&1 || true
+          # Ensure libatomic.so.1 exists (some distros need gcc for it)
+          if [ ! -f /usr/lib64/libatomic.so.1 ] && [ ! -f /usr/lib/libatomic.so.1 ]; then
+            dnf install -y libatomic 2>&1 || yum install -y libatomic 2>&1 || true
+          fi
+          # Create symlink if library exists but in non-standard path
+          find / -name "libatomic.so*" 2>/dev/null | head -5
+          # Verify critical tools
+          command -v sudo || command -v runuser || command -v setpriv || { echo "ERROR: no user-switching tool"; exit 1; }
+          ldconfig || true
 
       - name: Download packages from release
         run: |

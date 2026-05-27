@@ -95,32 +95,42 @@ listen_addresses = '*'
 EOF
 
 info "=== 4. Start GTM ==="
-run_as_otb $OTB_BIN/gtm -D $OTB_HOME/data/gtm &
-sleep 2
-if pgrep -f "gtm.*$GTM_PORT" >/dev/null 2>&1; then
+run_as_otb $OTB_BIN/gtm -D $OTB_HOME/data/gtm > /tmp/gtm.log 2>&1 &
+GTM_PID=$!
+sleep 3
+if kill -0 $GTM_PID 2>/dev/null; then
     pass "GTM started on port $GTM_PORT"
 else
     fail "GTM failed to start"
+    echo "--- GTM log ---"
+    cat /tmp/gtm.log 2>/dev/null || true
+    echo "--- end GTM log ---"
     exit 1
 fi
 
 info "=== 5. Start Datanode ==="
-run_as_otb $OTB_BIN/postgres --datanode -D $OTB_HOME/data/dn1 &
+run_as_otb $OTB_BIN/postgres --datanode -D $OTB_HOME/data/dn1 > /tmp/dn.log 2>&1 &
 sleep 3
 if pgrep -f "postgres.*datanode" >/dev/null 2>&1; then
     pass "Datanode started on port $DN_PORT"
 else
     fail "Datanode failed to start"
+    echo "--- Datanode log ---"
+    tail -20 /tmp/dn.log 2>/dev/null || true
+    echo "--- end Datanode log ---"
     exit 1
 fi
 
 info "=== 6. Start Coordinator ==="
-run_as_otb $OTB_BIN/postgres --coordinator -D $OTB_HOME/data/coord &
+run_as_otb $OTB_BIN/postgres --coordinator -D $OTB_HOME/data/coord > /tmp/coord.log 2>&1 &
 sleep 3
 if pgrep -f "postgres.*coordinator" >/dev/null 2>&1; then
     pass "Coordinator started on port $COORD_PORT"
 else
     fail "Coordinator failed to start"
+    echo "--- Coordinator log ---"
+    tail -20 /tmp/coord.log 2>/dev/null || true
+    echo "--- end Coordinator log ---"
     exit 1
 fi
 
