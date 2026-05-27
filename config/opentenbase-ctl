@@ -239,19 +239,18 @@ stop_coord() {
 
 cmd_start() {
     ensure_dirs
-    # Start order: gtm -> coord -> (register) -> dn1
+    # Start ALL nodes first: gtm -> coord -> dn1
+    # (Datanode finds GTM from its local postgresql.conf, not from pgxc_node)
     for n in $START_ORDER; do
         case $n in
             gtm) start_gtm ;;
             coord) start_coord ;;
-            dn1)
-                # Register nodes before starting datanode so it can find GTM in pgxc_node
-                register_nodes
-                start_dn1
-                ;;
+            dn1) start_dn1 ;;
         esac
     done
-    # Final registration pass (ensures datanode also gets nodes propagated)
+    # Register nodes AFTER all processes are running.
+    # Calling pgxc_pool_reload() before the datanode is listening causes the
+    # pooler to block on a TCP connect (~120 s) which exceeds the test timeout.
     register_nodes
     # Set up node group and sharding map for DISTRIBUTE BY SHARD support
     setup_node_group
