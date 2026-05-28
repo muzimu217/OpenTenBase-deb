@@ -136,20 +136,20 @@ build_apt_repo() {
 
         log_info "  $codename: $count packages"
 
-        # Generate Packages file
-        cd "$pool_dir"
-        if ! dpkg-scanpackages . /dev/null > "$binary_dir/Packages" 2>&1; then
-            log_warn "dpkg-scanpackages failed for $codename, trying dpkg-scanpackages with override"
-            dpkg-scanpackages . 2>/dev/null > "$binary_dir/Packages" || {
+        # Generate Packages file (use absolute path to avoid cd issues)
+        local abs_binary_dir
+        abs_binary_dir="$(cd "$binary_dir" && pwd)"
+        if ! dpkg-scanpackages "$pool_dir" /dev/null > "$abs_binary_dir/Packages" 2>&1; then
+            log_warn "dpkg-scanpackages failed for $codename, trying without override"
+            dpkg-scanpackages "$pool_dir" 2>/dev/null > "$abs_binary_dir/Packages" || {
                 log_warn "dpkg-scanpackages completely failed for $codename"
-                cd - > /dev/null
                 continue
             }
         fi
-        gzip -9c "$binary_dir/Packages" > "$binary_dir/Packages.gz"
-        cd - > /dev/null
+        gzip -9c "$abs_binary_dir/Packages" > "$abs_binary_dir/Packages.gz"
 
         # Generate Release file for this codename
+        mkdir -p "$dist_dir"
         cat > "$dist_dir/Release" << EOF
 Origin: OpenTenBase
 Label: OpenTenBase
