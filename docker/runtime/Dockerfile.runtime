@@ -10,6 +10,7 @@ RUN dnf install -y \
     net-tools \
     nmap-ncat \
     hostname \
+    util-linux-user \
     && dnf clean all
 
 # Install OpenTenBase from extracted files
