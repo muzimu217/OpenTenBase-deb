@@ -79,9 +79,11 @@ sudo dnf install opentenbase
 | Debian | 11 / 12 / 13 | ✅ | — |
 | Rocky Linux | 8 / 9 | — | ✅ |
 | AlmaLinux | 8 / 9 | — | ✅ |
-| CentOS Stream | 9 | — | ✅ |
+| CentOS Stream | 8 / 9 | — | ✅ |
 | Fedora | 40 | — | ✅ |
 | openEuler | 22.03 | — | ✅ |
+
+> **Total**: 15 distros, 50 packages per release (42 DEB + 8 RPM)
 
 ---
 
@@ -281,9 +283,10 @@ OpenTenBase-packages/
 
 | Release | Date | Assets | Notes |
 |---------|------|--------|-------|
+| v5.0-p2 | 2026-05-28 | 50 | Fix lib/postgresql path, all 15 distros |
+| v5.0-multi16 | 2026-05-26 | 42 | Multi-distro release (DEB + RPM) |
+| v5.0-multi12 | 2026-05-25 | 31 | Multi-distro release (DEB + RPM) |
 | v5.0-multi9 | 2026-05-20 | 31 | Multi-distro release (DEB + RPM) |
-| v5.0-multi8 | 2026-05-18 | 13 | Expanded distro support |
-| v5.0-1ubuntu1 | 2026-05-18 | 7 | Initial DEB release |
 | v5.0 | 2026-05-18 | 7 | First release |
 
 See [GitHub Releases](https://github.com/muzimu217/OpenTenBase-deb/releases) for all releases.
@@ -395,4 +398,4 @@ Same as OpenTenBase — [Apache License 2.0](https://www.apache.org/licenses/LIC
 ---
 
 **Maintainer**: muzimu217
-**Last Updated**: 2026-05-28
+**Last Updated**: 2026-05-28 (v5.0-p2)

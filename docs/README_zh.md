@@ -70,14 +70,15 @@ sudo dnf install opentenbase
 | Ubuntu | 20.04 (Focal) | ✅ | — | ✅ | ✅ | 已验证 |
 | Ubuntu | 22.04 (Jammy) | ✅ | — | ✅ | ✅ | 已验证 |
 | Ubuntu | 24.04 (Noble) | ✅ | — | ✅ | ✅ | 已验证 |
+| Ubuntu | 25.04 (Plucky) | ✅ | — | ✅ | — | 已验证 |
 | Debian | 11 (Bullseye) | ✅ | — | ✅ | ✅ | 已验证 |
 | Debian | 12 (Bookworm) | ✅ | — | ✅ | ✅ | 已验证 |
-| RHEL / CentOS | 8 | — | ✅ | ✅ | ✅ | 已验证 |
-| RHEL / CentOS | 9 | — | ✅ | ✅ | ✅ | 已验证 |
+| Debian | 13 (Trixie) | ✅ | — | ✅ | — | 已验证 |
+| CentOS Stream | 8 / 9 | — | ✅ | ✅ | — | 已验证 |
 | Rocky Linux | 8 / 9 | — | ✅ | ✅ | ✅ | 已验证 |
 | AlmaLinux | 8 / 9 | — | ✅ | ✅ | ✅ | 已验证 |
-| Fedora | 39+ | — | ✅ | ✅ | ✅ | 已验证 |
-| OpenEuler | 22.03+ | — | ✅ | ✅ | ✅ | 已验证 |
+| Fedora | 40 | — | ✅ | ✅ | ✅ | 已验证 |
+| OpenEuler | 22.03 | — | ✅ | ✅ | ✅ | 已验证 |
 
 ---
 
@@ -282,9 +283,10 @@ OpenTenBase-packages/
 
 | 版本 | 日期 | 资产数 | 说明 |
 |------|------|--------|------|
+| v5.0-p2 | 2026-05-28 | 50 | 修复 lib/postgresql 路径，覆盖 15 个发行版 |
+| v5.0-multi16 | 2026-05-26 | 42 | 多发行版发布（DEB + RPM） |
+| v5.0-multi12 | 2026-05-25 | 31 | 多发行版发布（DEB + RPM） |
 | v5.0-multi9 | 2026-05-20 | 31 | 多发行版发布（DEB + RPM） |
-| v5.0-multi8 | 2026-05-18 | 13 | 扩展发行版支持 |
-| v5.0-1ubuntu1 | 2026-05-18 | 7 | 首个 DEB 发布 |
 | v5.0 | 2026-05-18 | 7 | 首次发布 |
 
 详见 [GitHub Releases](https://github.com/muzimu217/OpenTenBase-deb/releases)。
