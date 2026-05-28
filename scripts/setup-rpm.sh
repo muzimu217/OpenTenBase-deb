@@ -51,12 +51,12 @@ detect_os() {
         fedora)
             REPO_SUBDIR="fedora"
             ;;
-        openeuler)
+        openeuler|hce)
             REPO_SUBDIR="openeuler"
             ;;
         *)
             log_error "Unsupported distribution: $ID"
-            echo "Supported: Rocky Linux 8/9, AlmaLinux 8/9, CentOS Stream 8/9, Fedora 40+, openEuler 22.03+"
+            echo "Supported: Rocky Linux 8/9, AlmaLinux 8/9, CentOS Stream 8/9, Fedora 40+, openEuler 22.03+, Huawei Cloud EulerOS"
             exit 1
             ;;
     esac
