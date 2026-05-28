@@ -138,11 +138,14 @@ build_apt_repo() {
 
         # Generate Packages file
         cd "$pool_dir"
-        dpkg-scanpackages . /dev/null 2>/dev/null > "$binary_dir/Packages" || {
-            log_warn "dpkg-scanpackages failed for $codename"
-            cd - > /dev/null
-            continue
-        }
+        if ! dpkg-scanpackages . /dev/null > "$binary_dir/Packages" 2>&1; then
+            log_warn "dpkg-scanpackages failed for $codename, trying dpkg-scanpackages with override"
+            dpkg-scanpackages . 2>/dev/null > "$binary_dir/Packages" || {
+                log_warn "dpkg-scanpackages completely failed for $codename"
+                cd - > /dev/null
+                continue
+            }
+        fi
         gzip -9c "$binary_dir/Packages" > "$binary_dir/Packages.gz"
         cd - > /dev/null
 
@@ -212,6 +215,7 @@ build_rpm_repo() {
     log_step "Building RPM repository ..."
 
     local rpm_dir="$outdir/rpm"
+    mkdir -p "$rpm_dir"
 
     # Copy GPG public key
     if [ -f scripts/opentenbase-packages-key.asc ]; then
