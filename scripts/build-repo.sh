@@ -71,8 +71,12 @@ download_release() {
     mkdir -p "$outdir"
 
     local api_url="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/tags/${tag}"
+    local auth_header=""
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        auth_header="-H \"Authorization: token $GITHUB_TOKEN\""
+    fi
     local urls
-    urls=$(curl -sL "$api_url" | jq -r '.assets[].browser_download_url')
+    urls=$(eval curl -sL "$api_url" "$auth_header" | jq -r '.assets[].browser_download_url')
 
     if [ -z "$urls" ]; then
         log_error "No assets found for release $tag"
