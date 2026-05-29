@@ -18,7 +18,7 @@ export PKG_CONFIG_PATH := /usr/lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARC
 override_dh_auto_configure:
 	# GCC 15+ defaults: implicit function declarations are errors, breaking configure thread test.
 	# Force thread safety check to pass — all modern glibc are thread-safe.
-	perl -0777 -pi -e 's/(#include.*thread_test\.c\n_ACEOF\n)if ac_fn_c_try_run.*?; then/\1if true; then/s' configure
+	perl -0777 -pi -e 's/#include "\$$srcdir\/src\/test\/thread\/thread_test\.c"\n_ACEOF\nif ac_fn_c_try_run "\$$LINENO"; then :/if true; then :/' configure
 	# GCC compatibility patches for modern GCC (12+)
 	# Fix bool type conflict: modern GCC uses _Bool, not char
 	if grep -q 'typedef char bool;' src/include/c.h 2>/dev/null; then \
