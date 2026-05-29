@@ -86,6 +86,16 @@ jobs:
             exit 1
           fi
 
+      - name: Verify installation
+        run: |
+          echo "=== Installed packages ==="
+          dpkg -l | grep opentenbase || true
+          echo "=== Binary check ==="
+          ls -la /usr/lib/opentenbase/5.0/bin/initgtm 2>&1 || echo "initgtm NOT FOUND"
+          ls -la /usr/lib/opentenbase/5.0/bin/postgres 2>&1 || echo "postgres NOT FOUND"
+          file /usr/lib/opentenbase/5.0/bin/initgtm 2>&1 || true
+          ldd /usr/lib/opentenbase/5.0/bin/initgtm 2>&1 || true
+
       - name: Checkout test scripts
         uses: actions/checkout@v4
 
