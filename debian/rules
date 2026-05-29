@@ -119,6 +119,23 @@ override_dh_shlibdeps:
 override_dh_installsystemd:
 	dh_installsystemd --no-enable --no-start
 
+override_dh_install:
+	# For v2.6.0 and v2.5.0, skip files that don't exist in older versions
+	if [ "$(OTB_VERSION)" != "5.0" ]; then \
+	    dh_install \
+	        -Xopentenbase_ctl \
+	        -Xopentenbase_tool \
+	        -Xpg_license \
+	        -Xopentenbase_ora.bki \
+	        -Xopentenbase_ora.description \
+	        -Xopentenbase_ora.shdescription \
+	        -Xsystem_views_opentenbase_ora.sql \
+	        -Xsystem_views_pg.sql \
+	        --fail-missing; \
+	else \
+	    dh_install --fail-missing; \
+	fi
+
 override_dh_missing:
 	dh_missing --list-missing
 
