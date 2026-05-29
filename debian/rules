@@ -85,7 +85,12 @@ override_dh_auto_install:
 	$(MAKE) -j$(JOBS) DESTDIR=$(DESTDIR) -C contrib install
 	install -D -m 0755 config/opentenbase-ctl $(DESTDIR)/usr/bin/opentenbase-ctl
 	install -D -m 0755 scripts/switch-version.sh $(DESTDIR)/usr/bin/opentenbase-switch-version
-	install -D -m 0644 config/opentenbase.conf $(DESTDIR)/etc/opentenbase/$(OTB_VERSION)/opentenbase.conf
+	# Select version-specific config template if available, otherwise use default
+	if [ -f config/$(OTB_VERSION)/opentenbase.conf ]; then \
+	    install -D -m 0644 config/$(OTB_VERSION)/opentenbase.conf $(DESTDIR)/etc/opentenbase/$(OTB_VERSION)/opentenbase.conf; \
+	else \
+	    install -D -m 0644 config/opentenbase.conf $(DESTDIR)/etc/opentenbase/$(OTB_VERSION)/opentenbase.conf; \
+	fi
 	install -D -m 0644 config/gtm.conf.template $(DESTDIR)/etc/opentenbase/$(OTB_VERSION)/gtm.conf.template
 	install -D -m 0644 config/postgresql.conf.coord.template $(DESTDIR)/etc/opentenbase/$(OTB_VERSION)/postgresql.conf.coord.template
 	install -D -m 0644 config/postgresql.conf.dn.template $(DESTDIR)/etc/opentenbase/$(OTB_VERSION)/postgresql.conf.dn.template

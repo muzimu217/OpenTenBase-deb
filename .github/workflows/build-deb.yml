@@ -5,47 +5,59 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
-      version:
-        description: 'OpenTenBase version (e.g., 5.0, 6.0)'
+      versions:
+        description: 'Comma-separated versions (e.g., 5.0,2.6.0,2.5.0)'
         required: true
-        default: '5.0'
+        default: '5.0,2.6.0,2.5.0'
         type: string
   workflow_call:
     inputs:
-      version:
-        description: 'OpenTenBase version (e.g., 5.0, 6.0)'
+      versions:
+        description: 'Comma-separated versions'
         required: false
-        default: '5.0'
+        default: '5.0,2.6.0,2.5.0'
         type: string
 
 jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          VERSIONS='${{ inputs.versions || ''5.0,2.6.0,2.5.0'' }}'
+          # Build matrix JSON: each version × each distro
+          MATRIX='{"include":['
+          FIRST=true
+          for ver in $(echo "$VERSIONS" | tr ',' ' '); do
+            for entry in \
+              "ubuntu-20.04:ubuntu:20.04:focal" \
+              "ubuntu-22.04:ubuntu:22.04:jammy" \
+              "ubuntu-24.04:ubuntu:24.04:noble" \
+              "ubuntu-25.04:ubuntu:25.04:plucky" \
+              "debian-11:debian:bullseye:bullseye" \
+              "debian-12:debian:bookworm:bookworm" \
+              "debian-13:debian:trixie:trixie"; do
+              IFS=':' read -r distro container codename_name codename <<< "$entry"
+              if [ "$FIRST" = "true" ]; then
+                FIRST=false
+              else
+                MATRIX="$MATRIX,"
+              fi
+              MATRIX="$MATRIX{\"version\":\"$ver\",\"name\":\"${distro}-${ver}-amd64\",\"container\":\"$container\",\"codename\":\"$codename\"}"
+            done
+          done
+          MATRIX="$MATRIX]}"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Matrix: $MATRIX"
+
   build-deb-amd64:
+    needs: setup-matrix
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix:
-        include:
-          - name: ubuntu-20.04-amd64
-            container: ubuntu:20.04
-            codename: focal
-          - name: ubuntu-22.04-amd64
-            container: ubuntu:22.04
-            codename: jammy
-          - name: ubuntu-24.04-amd64
-            container: ubuntu:24.04
-            codename: noble
-          - name: ubuntu-25.04-amd64
-            container: ubuntu:25.04
-            codename: plucky
-          - name: debian-11-amd64
-            container: debian:bullseye
-            codename: bullseye
-          - name: debian-12-amd64
-            container: debian:bookworm
-            codename: bookworm
-          - name: debian-13-amd64
-            container: debian:trixie
-            codename: trixie
+      matrix: ${{ fromJSON(needs.setup-matrix.outputs.matrix) }}
 
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -86,14 +98,27 @@ jobs:
 
       - name: Clone OpenTenBase upstream source
         run: |
-          git clone --depth=1 \
-            https://github.com/OpenTenBase/OpenTenBase.git \
-            /tmp/source/OpenTenBase
+          # For v2.6.0 and v2.5.0, clone the specific tag
+          VERSION="${{ matrix.version }}"
+          if [ "$VERSION" = "5.0" ]; then
+            git clone --depth=1 \
+              https://github.com/OpenTenBase/OpenTenBase.git \
+              /tmp/source/OpenTenBase
+          else
+            git clone --depth=1 --branch "v${VERSION}" \
+              https://github.com/OpenTenBase/OpenTenBase.git \
+              /tmp/source/OpenTenBase 2>/dev/null || {
+              echo "Tag v${VERSION} not found, trying default branch"
+              git clone --depth=1 \
+                https://github.com/OpenTenBase/OpenTenBase.git \
+                /tmp/source/OpenTenBase
+            }
+          fi
 
       - name: Build DEB packages
         shell: bash
         env:
-          OTB_VERSION: ${{ github.event.inputs.version || '5.0' }}
+          OTB_VERSION: ${{ matrix.version }}
         run: |
           cd /tmp/source/OpenTenBase
           cp -r "$GITHUB_WORKSPACE/opentenbase-pkg/debian/" ./debian/
@@ -102,13 +127,24 @@ jobs:
               cp "$GITHUB_WORKSPACE/opentenbase-pkg/config/$f" ./config/
             fi
           done
+          # Copy version-specific config if available
+          if [ -d "$GITHUB_WORKSPACE/opentenbase-pkg/config/$OTB_VERSION" ]; then
+            mkdir -p "./config/$OTB_VERSION"
+            cp -r "$GITHUB_WORKSPACE/opentenbase-pkg/config/$OTB_VERSION/"* "./config/$OTB_VERSION/" 2>/dev/null || true
+          fi
           if [ -d "$GITHUB_WORKSPACE/opentenbase-pkg/scripts" ]; then
             mkdir -p ./scripts
             cp -r "$GITHUB_WORKSPACE/opentenbase-pkg/scripts/"* ./scripts/ 2>/dev/null || true
           fi
           ls -la config/opentenbase-ctl 2>&1 || echo "WARNING: config/opentenbase-ctl not found"
+          # Replace version in debian/rules
           if [ -n "$OTB_VERSION" ] && [ "$OTB_VERSION" != "5.0" ]; then
             sed -i "s/^OTB_VERSION := .*/OTB_VERSION := $OTB_VERSION/" debian/rules
+          fi
+          # Replace hardcoded 5.0 in all debian/ files for non-5.0 builds
+          if [ "$OTB_VERSION" != "5.0" ]; then
+            find debian/ -type f \( -name '*.install' -o -name '*.dirs' -o -name '*.postinst' -o -name '*.prerm' -o -name '*.postrm' \) \
+              -exec sed -i "s/5\.0/$OTB_VERSION/g" {} +
           fi
           set -o pipefail
           fakeroot debian/rules binary 2>&1 | tee /tmp/build.log; EXIT_CODE=$?; if [ $EXIT_CODE -ne 0 ]; then echo "=== BUILD FAILED (last 300 lines) ==="; tail -300 /tmp/build.log; fi; exit $EXIT_CODE
@@ -119,9 +155,11 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/debs"
           cp /tmp/source/*.deb "$GITHUB_WORKSPACE/debs/" 2>/dev/null || true
           cd "$GITHUB_WORKSPACE/debs"
+          VERSION="${{ matrix.version }}"
           for deb in *.deb; do
             [ -f "$deb" ] || continue
-            newname=$(echo "$deb" | sed "s/_5.0-1ubuntu1_/_5.0-1ubuntu1~${{ matrix.codename }}_/")
+            # Add codename suffix to prevent collisions
+            newname=$(echo "$deb" | sed "s/_${VERSION}-1ubuntu1_/_${VERSION}-1ubuntu1~${{ matrix.codename }}_/")
             if [ "$newname" != "$deb" ]; then
               mv "$deb" "$newname"
             fi

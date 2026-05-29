@@ -5,43 +5,58 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
-      version:
-        description: 'OpenTenBase version (e.g., 5.0, 6.0)'
+      versions:
+        description: 'Comma-separated versions (e.g., 5.0,2.6.0,2.5.0)'
         required: true
-        default: '5.0'
+        default: '5.0,2.6.0,2.5.0'
         type: string
   workflow_call:
     inputs:
-      version:
-        description: 'OpenTenBase version (e.g., 5.0, 6.0)'
+      versions:
+        description: 'Comma-separated versions'
         required: false
-        default: '5.0'
+        default: '5.0,2.6.0,2.5.0'
         type: string
 
 jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          VERSIONS='${{ inputs.versions || ''5.0,2.6.0,2.5.0'' }}'
+          MATRIX='{"include":['
+          FIRST=true
+          for ver in $(echo "$VERSIONS" | tr ',' ' '); do
+            for entry in \
+              "centos-stream-8:quay.io/centos/centos:stream8" \
+              "centos-stream-9:quay.io/centos/centos:stream9" \
+              "rockylinux-8:rockylinux:8" \
+              "rockylinux-9:rockylinux:9" \
+              "almalinux-8:almalinux:8" \
+              "almalinux-9:almalinux:9" \
+              "fedora-40:quay.io/fedora/fedora:40" \
+              "openeuler-22.03:openeuler/openeuler:22.03"; do
+              IFS=':' read -r distro container <<< "$entry"
+              if [ "$FIRST" = "true" ]; then
+                FIRST=false
+              else
+                MATRIX="$MATRIX,"
+              fi
+              MATRIX="$MATRIX{\"version\":\"$ver\",\"name\":\"${distro}-${ver}-x86_64\",\"container\":\"$container\"}"
+            done
+          done
+          MATRIX="$MATRIX]}"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   build-rpm-x86_64:
-    if: ${{ !inputs.arch_only || inputs.arch_only == 'x86_64' }}
+    needs: setup-matrix
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix:
-        include:
-          - name: centos-stream-8-x86_64
-            container: quay.io/centos/centos:stream8
-          - name: centos-stream-9-x86_64
-            container: quay.io/centos/centos:stream9
-          - name: rockylinux-8-x86_64
-            container: rockylinux:8
-          - name: rockylinux-9-x86_64
-            container: rockylinux:9
-          - name: almalinux-8-x86_64
-            container: almalinux:8
-          - name: almalinux-9-x86_64
-            container: almalinux:9
-          - name: fedora-40-x86_64
-            container: quay.io/fedora/fedora:40
-          - name: openeuler-22.03-x86_64
-            container: openeuler/openeuler:22.03
+      matrix: ${{ fromJSON(needs.setup-matrix.outputs.matrix) }}
 
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -98,18 +113,30 @@ jobs:
 
       - name: Clone OpenTenBase upstream source
         run: |
+          VERSION="${{ matrix.version }}"
           if [ -d /tmp/source/OpenTenBase/.git ]; then
             cd /tmp/source/OpenTenBase && git pull --depth=1
           else
-            git clone --depth=1 \
-              https://github.com/OpenTenBase/OpenTenBase.git \
-              /tmp/source/OpenTenBase
+            if [ "$VERSION" = "5.0" ]; then
+              git clone --depth=1 \
+                https://github.com/OpenTenBase/OpenTenBase.git \
+                /tmp/source/OpenTenBase
+            else
+              git clone --depth=1 --branch "v${VERSION}" \
+                https://github.com/OpenTenBase/OpenTenBase.git \
+                /tmp/source/OpenTenBase 2>/dev/null || {
+                echo "Tag v${VERSION} not found, trying default branch"
+                git clone --depth=1 \
+                  https://github.com/OpenTenBase/OpenTenBase.git \
+                  /tmp/source/OpenTenBase
+              }
+            fi
           fi
 
       - name: Build RPM packages
         run: |
           cd opentenbase-pkg/rpm
-          bash build-rpm.sh --source-dir /tmp/source/OpenTenBase --version 5.0
+          bash build-rpm.sh --source-dir /tmp/source/OpenTenBase --version ${{ matrix.version }}
 
       - name: Run rpmlint
         if: always()
@@ -120,10 +147,11 @@ jobs:
         if: always()
         run: |
           ARCH_DIR=$(uname -m)
+          VERSION="${{ matrix.version }}"
           cd ~/rpmbuild/RPMS/${ARCH_DIR} 2>/dev/null || cd ~/rpmbuild/RPMS/noarch 2>/dev/null || true
           for rpm in *.rpm; do
             [ -f "$rpm" ] || continue
-            newname=$(echo "$rpm" | sed "s/-5\.0-1\./-5.0-1.${{ matrix.name }}./")
+            newname=$(echo "$rpm" | sed "s/-${VERSION}-1\./-${VERSION}-1.${{ matrix.name }}./")
             if [ "$newname" != "$rpm" ]; then
               mv "$rpm" "$newname"
             fi
