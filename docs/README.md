@@ -83,7 +83,7 @@ sudo dnf install opentenbase
 | Fedora | 40 | — | ✅ |
 | openEuler | 22.03 | — | ✅ |
 
-> **Total**: 15 distros, 50 packages per release (42 DEB + 8 RPM)
+> **Total**: 15 distros, 150 packages per release (126 DEB + 24 RPM) — 3 versions × 15 distros
 
 ---
 
@@ -283,6 +283,7 @@ OpenTenBase-packages/
 
 | Release | Date | Assets | Notes |
 |---------|------|--------|-------|
+| v5.0-p3 | 2026-05-29 | 150 | Multi-version (5.0+2.6.0+2.5.0), 15 distros |
 | v5.0-p2 | 2026-05-28 | 50 | Fix lib/postgresql path, all 15 distros |
 | v5.0-multi16 | 2026-05-26 | 42 | Multi-distro release (DEB + RPM) |
 | v5.0-multi12 | 2026-05-25 | 31 | Multi-distro release (DEB + RPM) |
@@ -398,4 +399,4 @@ Same as OpenTenBase — [Apache License 2.0](https://www.apache.org/licenses/LIC
 ---
 
 **Maintainer**: muzimu217
-**Last Updated**: 2026-05-28 (v5.0-p2)
+**Last Updated**: 2026-05-29 (v5.0-p3)
