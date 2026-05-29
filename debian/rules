@@ -144,10 +144,9 @@ override_dh_install:
 	        -Xopentenbase_ora.description \
 	        -Xopentenbase_ora.shdescription \
 	        -Xsystem_views_opentenbase_ora.sql \
-	        -Xsystem_views_pg.sql \
-	        --fail-missing; \
+	        -Xsystem_views_pg.sql; \
 	else \
-	    dh_install --fail-missing; \
+	    dh_install; \
 	fi
 
 override_dh_missing:
