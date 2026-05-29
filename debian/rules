@@ -30,6 +30,12 @@ override_dh_auto_configure:
 	sed -i 's|/usr/local/lib/libzstd.a|-lzstd|g' configure
 	# Fix ldap_r deprecation (merged into ldap in modern OpenLDAP)
 	sed -i 's/-lldap_r/-lldap/g' configure
+	# Ensure libatomic.so symlink exists BEFORE configure (Ubuntu doesn't always have it)
+	for dir in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu; do \
+	    if [ -f "$$dir/libatomic.so.1" ] && [ ! -f "$$dir/libatomic.so" ]; then \
+	        ln -sf libatomic.so.1 "$$dir/libatomic.so"; \
+	    fi; \
+	done
 	./configure \
 	    --prefix=$(PREFIX) \
 	    --sysconfdir=/etc/opentenbase/$(OTB_VERSION) \
@@ -48,13 +54,7 @@ override_dh_auto_configure:
 	    XML2_CONFIG=/usr/bin/xml2-config \
 	    CFLAGS="-O2 -g -fPIC -w -Wno-error=incompatible-pointer-types -Wno-error=int-conversion -Wno-error=implicit-function-declaration -Wno-error=implicit-int -DNOLIC -I/usr/include/libxml2 $(if $(filter amd64,$(shell dpkg-architecture -qDEB_HOST_ARCH 2>/dev/null)),-mcx16)" \
 	    LDFLAGS="-L/usr/lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || echo x86_64-linux-gnu) -Wl,--allow-multiple-definition -Wl,-rpath,/usr/lib/opentenbase/$(OTB_VERSION)/lib -Wl,--no-as-needed -latomic" \
-	    LIBS="-lzstd -llz4 -Wl,--no-as-needed -latomic"
-	# Ensure libatomic.so symlink exists for -l search
-	for dir in /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu; do \
-	    if [ -f "$$dir/libatomic.so.1" ] && [ ! -f "$$dir/libatomic.so" ]; then \
-	        ln -sf libatomic.so.1 "$$dir/libatomic.so"; \
-	    fi; \
-	done
+	    LIBS="-lpthread -lzstd -llz4 -Wl,--no-as-needed -latomic"
 	# Patch LIBS and strip --as-needed
 	sed -i 's|^LIBS = \(.*\)|LIBS = \1 -Wl,--no-as-needed -latomic|' src/Makefile.global
 	sed -i 's/-Wl,--as-needed//g' src/Makefile.global
