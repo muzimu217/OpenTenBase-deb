@@ -394,16 +394,16 @@ CONF
 install_deb() {
     local ver="${VERSION}-1ubuntu1"
 
-    # Determine codename suffix
+    # Determine codename suffix (use tilde ~ per Debian convention)
     local suffix
     case "$CODENAME" in
-        noble)    suffix=".noble" ;;
-        jammy)    suffix=".jammy" ;;
-        focal)    suffix=".focal" ;;
-        bookworm) suffix=".bookworm" ;;
-        bullseye) suffix=".bullseye" ;;
-        bionic)   suffix=".bionic" ;;
-        *)        suffix=".$CODENAME" ;;
+        noble)    suffix="~noble" ;;
+        jammy)    suffix="~jammy" ;;
+        focal)    suffix="~focal" ;;
+        bookworm) suffix="~bookworm" ;;
+        bullseye) suffix="~bullseye" ;;
+        bionic)   suffix="~bionic" ;;
+        *)        suffix="~$CODENAME" ;;
     esac
     ver="${ver}${suffix}"
 
