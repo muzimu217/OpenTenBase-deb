@@ -141,6 +141,7 @@ as_svc "${DN_PSQL} -c \"SELECT pgxc_pool_reload();\"" 2>/dev/null || true
 log "Nodes registered"
 
 # Run advanced tests
+export PATH="/usr/lib/opentenbase/5.0/bin:$PATH"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TOTAL_PASS=0
 TOTAL_FAIL=0
