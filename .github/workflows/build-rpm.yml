@@ -217,8 +217,12 @@ jobs:
 
       - name: Build ARM64 RPM in container
         run: |
+          # Create output directory on host
+          mkdir -p ${{ github.workspace }}/output
+
           docker run --rm --platform linux/arm64 \
             -v ${{ github.workspace }}/opentenbase-pkg:/pkg:ro \
+            -v ${{ github.workspace }}/output:/output \
             -v /tmp/source:/tmp/source \
             -e VERSION=${{ matrix.version }} \
             ${CONTAINER} bash -c '
@@ -230,11 +234,13 @@ jobs:
                 pkg-config libtool rpm-build git \
                 libssh2-devel libatomic || true
 
-              # Clone source
-              if [ "$VERSION" = "5.0" ]; then
-                git clone --depth=1 https://github.com/OpenTenBase/OpenTenBase.git /tmp/source/OpenTenBase
-              else
-                git clone --depth=1 --branch "v${VERSION}" https://github.com/OpenTenBase/OpenTenBase.git /tmp/source/OpenTenBase
+              # Clone source if not already present
+              if [ ! -d /tmp/source/OpenTenBase ]; then
+                if [ "$VERSION" = "5.0" ]; then
+                  git clone --depth=1 https://github.com/OpenTenBase/OpenTenBase.git /tmp/source/OpenTenBase
+                else
+                  git clone --depth=1 --branch "v${VERSION}" https://github.com/OpenTenBase/OpenTenBase.git /tmp/source/OpenTenBase
+                fi
               fi
 
               # Build
@@ -251,9 +257,8 @@ jobs:
               done
               ls -la *.rpm
 
-              # Copy to shared volume
-              mkdir -p /tmp/output
-              cp *.rpm /tmp/output/
+              # Copy to mounted output directory
+              cp *.rpm /output/
             '
         env:
           CONTAINER: ${{ matrix.container }}
@@ -262,5 +267,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rpms-${{ matrix.distro }}-${{ matrix.version }}-aarch64
-          path: /tmp/output/*.rpm
+          path: ${{ github.workspace }}/output/*.rpm
           retention-days: 30
