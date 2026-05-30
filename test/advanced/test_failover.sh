@@ -114,7 +114,7 @@ fi
 log_info "Test 4: Read/Write under stress"
 stress_ok=0
 for i in $(seq 1 20); do
-    ${PSQL} -c "INSERT INTO fo_test VALUES (${i}+1000, 'stress_${i}', now());" postgres 2>/dev/null && ((stress_ok++)) || true
+    ${PSQL} -c "INSERT INTO fo_test VALUES (${i}+1000, 'stress_${i}', now());" postgres 2>/dev/null && stress_ok=$((stress_ok + 1)) || true
 done
 if [[ "$stress_ok" -ge 18 ]]; then
     log_pass "Stress write -- ${stress_ok}/20 inserts succeeded"
