@@ -133,24 +133,39 @@ log "Registering nodes..."
 COORD_PSQL="${BIN_DIR}/psql -h 127.0.0.1 -p ${COORD_PORT} -U ${SVC_USER} -d postgres -X -q"
 DN_PSQL="${BIN_DIR}/psql -h 127.0.0.1 -p ${DN_PORT} -U ${SVC_USER} -d postgres -X -q"
 
-as_svc "${COORD_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
-as_svc "${COORD_PSQL} -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" 2>/dev/null || true
-as_svc "${DN_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
-as_svc "${DN_PSQL} -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+as_svc "${COORD_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" || true
+as_svc "${COORD_PSQL} -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" || true
+as_svc "${DN_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" || true
+as_svc "${DN_PSQL} -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" || true
 
-# Create default node group and initialize sharding map
-log "Creating default node group and sharding map..."
-as_svc "${COORD_PSQL} -c \"CREATE DEFAULT NODE GROUP default_group WITH (dn1);\"" 2>/dev/null || \
-as_svc "${COORD_PSQL} -c \"CREATE NODE GROUP default_group WITH (dn1);\"" 2>/dev/null || true
+# Create default node group
+log "Creating default node group..."
+as_svc "${COORD_PSQL} -c \"CREATE DEFAULT NODE GROUP default_group WITH (dn1);\"" || \
+as_svc "${COORD_PSQL} -c \"CREATE NODE GROUP default_group WITH (dn1);\"" || true
 
-# Initialize sharding map for the node group (required before distribute by shard)
-as_svc "${COORD_PSQL} -c \"SELECT pgxc_create_group_sharding_map('default_group');\"" 2>/dev/null || \
-as_svc "${COORD_PSQL} -c \"CREATE SHARDING MAP TO GROUP default_group;\"" 2>/dev/null || \
-as_svc "${COORD_PSQL} -c \"SELECT pgxc_group_sharding_map_init('default_group');\"" 2>/dev/null || true
+# Initialize sharding map - try multiple approaches with visible errors
+log "Initializing sharding map..."
+# Try approach 1: pgxc_create_group_sharding_map
+echo "--- Attempting pgxc_create_group_sharding_map ---"
+as_svc "${COORD_PSQL} -c \"SELECT pgxc_create_group_sharding_map('default_group');\"" 2>&1 || true
+# Try approach 2: CREATE SHARDING MAP
+echo "--- Attempting CREATE SHARDING MAP ---"
+as_svc "${COORD_PSQL} -c \"CREATE SHARDING MAP TO GROUP default_group;\"" 2>&1 || true
+# Try approach 3: pgxc_group_sharding_map_init
+echo "--- Attempting pgxc_group_sharding_map_init ---"
+as_svc "${COORD_PSQL} -c \"SELECT pgxc_group_sharding_map_init('default_group');\"" 2>&1 || true
+# Try approach 4: initdb with --sharding
+echo "--- Attempting SELECT pgxc_init_group_sharding_map ---"
+as_svc "${COORD_PSQL} -c \"SELECT pgxc_init_group_sharding_map('default_group');\"" 2>&1 || true
 
-as_svc "${COORD_PSQL} -c \"SELECT pgxc_pool_reload();\"" 2>/dev/null || true
-as_svc "${DN_PSQL} -c \"SELECT pgxc_pool_reload();\"" 2>/dev/null || true
-log "Nodes registered and sharding initialized"
+as_svc "${COORD_PSQL} -c \"SELECT pgxc_pool_reload();\"" || true
+as_svc "${DN_PSQL} -c \"SELECT pgxc_pool_reload();\"" || true
+log "Nodes registered"
+
+# Quick sanity check - try a simple distributed table
+log "Sanity check: creating test distributed table..."
+as_svc "${COORD_PSQL} -c \"CREATE TABLE _adv_sanity_check (id int) distribute by shard(id);\"" 2>&1 || true
+as_svc "${COORD_PSQL} -c \"DROP TABLE IF EXISTS _adv_sanity_check;\"" 2>&1 || true
 
 # Run advanced tests as SVC_USER so psql connects with the correct role
 export PATH="/usr/lib/opentenbase/5.0/bin:$PATH"
