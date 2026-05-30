@@ -624,10 +624,6 @@ This is the **standard route for official packaging of open source projects**, a
 
 - [x] **Docker Compose** — one-click cluster deployment
 
-### In Progress 🔄
-
-- [x] **Docker image publishing** — workflow created (`docker-publish.yml`), ready for first publish
-
 ### Completed (Phase 3 - CDN + Docker) ✅
 
 - [x] **Cloudflare CDN acceleration** — apt.blackevil217.com / rpm.blackevil217.com
@@ -636,14 +632,20 @@ This is the **standard route for official packaging of open source projects**, a
   - Mirror priority: Cloudflare CDN → Gitee → GitHub Pages
 
 - [x] **Docker image publishing** — GHCR (GitHub Container Registry)
-  - `ghcr.io/muzimu217/opentenbase-runtime:v5.0-p3`
-  - workflow: `docker-publish.yml` (triggered manually or on release)
-  - base image: openEuler 22.03
+  - Image: `ghcr.io/muzimu217/opentenbase-runtime:v5.0-p6`
+  - Workflow: `docker-publish.yml` (manual trigger or on release)
+  - Base: openEuler 22.03, includes OpenTenBase 5.0 runtime
+  - Usage: `docker pull ghcr.io/muzimu217/opentenbase-runtime:v5.0-p6`
+
+### Completed (Phase 3 - ARM64 CI) ✅
+
+- [x] **ARM64 RPM CI matrix** — QEMU emulation via GitHub Actions
+  - openEuler 22.03 aarch64: successfully built and uploaded (9.3MB)
+  - x86_64 + aarch64 dual architecture CI matrix
 
 ### Pending ⏳
 
 - [ ] **Cross-machine multi-node deployment** — currently single-machine only
-- [ ] **ARM64 RPM CI matrix** — aarch64 RPM only tested manually on EulerOS
 
 ---
 

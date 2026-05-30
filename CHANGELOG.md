@@ -6,20 +6,46 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v5.0-p7] — 2026-05-30
+
+ARM64 RPM CI matrix and comprehensive test verification.
+
+### Added
+- ARM64 RPM CI matrix using QEMU emulation (`build-rpm.yml`)
+- openEuler 22.03 aarch64 builds successfully (9.3MB RPM)
+- Dual architecture CI: x86_64 (8 distros) + aarch64 (openEuler)
+- Docker output volume mount fix for artifact upload
+
+### Test Results
+- x86_64: 8/8 distros passing
+- aarch64: 1/1 (openEuler) passing, Rocky/Alma needs dependency fixes
+
+---
+
 ## [v5.0-p6] — 2026-05-30
 
-Cloudflare CDN acceleration for global package delivery.
+Cloudflare CDN acceleration and Docker image publishing.
 
 ### Added
 - Cloudflare CDN mirror: `apt.blackevil217.com` / `rpm.blackevil217.com`
 - DNS CNAME records with Cloudflare Proxy enabled
 - CNAME file generation in `build-repo.sh` for GitHub Pages custom domain
 - CDN mirror detection in `setup-apt.sh` and `setup-rpm.sh`
+- Docker image published to GHCR: `ghcr.io/muzimu217/opentenbase-runtime:v5.0-p6`
+  - Base image: openEuler 22.03
+  - Includes OpenTenBase 5.0 runtime environment
+  - Workflow: `docker-publish.yml` (manual trigger or on release)
 
 ### Mirror Priority
 1. Cloudflare CDN (apt.blackevil217.com) — global acceleration, free forever
 2. Gitee (blackEvil217.gitee.io) — China users
 3. GitHub Pages (muzimu217.github.io) — direct fallback
+
+### Docker Usage
+```bash
+docker pull ghcr.io/muzimu217/opentenbase-runtime:v5.0-p6
+docker run -d -p 5432:5432 ghcr.io/muzimu217/opentenbase-runtime:v5.0-p6
+```
 
 ---
 

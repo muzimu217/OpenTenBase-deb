@@ -624,21 +624,28 @@ main "$@"
 
 - [x] **Docker Compose** — 一键集群部署
 
-### 进行中 🔄
-
-- [x] **Docker 镜像发布** — workflow 已创建 (`docker-publish.yml`)，待首次发布
-
-### 已完成（Phase 3 - CDN）✅
+### 已完成（Phase 3 - CDN + Docker）✅
 
 - [x] **Cloudflare CDN 加速** — apt.blackevil217.com / rpm.blackevil217.com
   - DNS 记录已创建，开启 Cloudflare Proxy
   - setup-apt.sh / setup-rpm.sh 已更新 CDN 镜像检测
   - 镜像优先级：Cloudflare CDN → Gitee → GitHub Pages
 
+- [x] **Docker 镜像发布** — GHCR（GitHub Container Registry）
+  - 镜像：`ghcr.io/muzimu217/opentenbase-runtime:v5.0-p6`
+  - Workflow：`docker-publish.yml`（手动触发或随 release 触发）
+  - 基础镜像：openEuler 22.03，包含 OpenTenBase 5.0 运行环境
+  - 使用方式：`docker pull ghcr.io/muzimu217/opentenbase-runtime:v5.0-p6`
+
+### 已完成（Phase 3 - ARM64 CI）✅
+
+- [x] **ARM64 RPM CI 矩阵** — QEMU 模拟，GitHub Actions 自动构建
+  - openEuler 22.03 aarch64: 构建成功，产物 9.3MB
+  - x86_64 + aarch64 双架构 CI 矩阵
+
 ### 待开始 ⏳
 
 - [ ] **跨机器多节点部署** — 当前仅支持单机
-- [ ] **ARM64 RPM CI 矩阵** — aarch64 RPM 仅在 EulerOS 手动测试
 
 ---
 
