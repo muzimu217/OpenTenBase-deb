@@ -93,7 +93,7 @@ ${PSQL} -c "INSERT INTO txn_test VALUES (10, 'original');" postgres
 
 # Start a transaction, update but don't commit yet is hard in single psql,
 # so we verify READ COMMITTED behaviour by checking that non-locked rows are visible.
-val=$(${PSQL} -c "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED; SELECT val FROM txn_test WHERE id = 10; COMMIT;" postgres)
+val=$(${PSQL} -1 -c "SET TRANSACTION ISOLATION LEVEL READ COMMITTED; SELECT val FROM txn_test WHERE id = 10;" postgres)
 if [[ "$val" == "original" ]]; then
     log_pass "READ COMMITTED -- can read committed data"
 else
