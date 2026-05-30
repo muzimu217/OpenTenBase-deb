@@ -628,12 +628,17 @@ This is the **standard route for official packaging of open source projects**, a
 
 - [x] **Docker image publishing** — workflow created (`docker-publish.yml`), ready for first publish
 
-### Completed (Phase 3 - CDN) ✅
+### Completed (Phase 3 - CDN + Docker) ✅
 
 - [x] **Cloudflare CDN acceleration** — apt.blackevil217.com / rpm.blackevil217.com
   - DNS records created with Cloudflare Proxy enabled
   - setup-apt.sh / setup-rpm.sh updated with CDN mirror detection
   - Mirror priority: Cloudflare CDN → Gitee → GitHub Pages
+
+- [x] **Docker image publishing** — GHCR (GitHub Container Registry)
+  - `ghcr.io/muzimu217/opentenbase-runtime:v5.0-p3`
+  - workflow: `docker-publish.yml` (triggered manually or on release)
+  - base image: openEuler 22.03
 
 ### Pending ⏳
 
