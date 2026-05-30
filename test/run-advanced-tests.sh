@@ -127,16 +127,22 @@ else
     fail "Coordinator failed to start"
 fi
 
-# Register nodes
+# Register nodes and create default node group
 log "Registering nodes..."
 COORD_PSQL="${BIN_DIR}/psql -h 127.0.0.1 -p ${COORD_PORT} -U ${SVC_USER} -d postgres -X -q"
 DN_PSQL="${BIN_DIR}/psql -h 127.0.0.1 -p ${DN_PORT} -U ${SVC_USER} -d postgres -X -q"
 
 as_svc "${COORD_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
 as_svc "${COORD_PSQL} -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" 2>/dev/null || true
-as_svc "${COORD_PSQL} -c \"SELECT pgxc_pool_reload();\"" 2>/dev/null || true
 as_svc "${DN_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
 as_svc "${DN_PSQL} -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+
+# Create default node group (required for distribute by shard)
+log "Creating default node group..."
+as_svc "${COORD_PSQL} -c \"CREATE DEFAULT NODE GROUP default_group WITH (dn1);\"" 2>/dev/null || \
+as_svc "${COORD_PSQL} -c \"CREATE NODE GROUP default_group WITH (dn1);\"" 2>/dev/null || true
+
+as_svc "${COORD_PSQL} -c \"SELECT pgxc_pool_reload();\"" 2>/dev/null || true
 as_svc "${DN_PSQL} -c \"SELECT pgxc_pool_reload();\"" 2>/dev/null || true
 log "Nodes registered"
 
